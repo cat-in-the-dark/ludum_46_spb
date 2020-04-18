@@ -316,7 +316,7 @@ function g_hover( btn )
 end
 
 function g_leave( btn )
-  btn.color = 5
+  btn.color = btn.orig_c
 end
 
 function make_button( x, y, w, h, color, on_hover, on_leave, on_press, on_release, on_enter, sp, offx, offy )
@@ -324,6 +324,7 @@ function make_button( x, y, w, h, color, on_hover, on_leave, on_press, on_releas
   btn.x, btn.y = x,y
   btn.w, btn.h = w,h
   btn.color = color
+  btn.orig_c = color
   btn.on_hover = on_hover
   btn.on_leave = on_leave
   btn.on_press = on_press
@@ -368,6 +369,8 @@ end
 
 function draw_button( btn )
   rect(btn.x, btn.y, btn.w, btn.h, btn.color)
+  rectb(btn.x, btn.y, btn.w, btn.h, 2)
+  rectb(btn.x + 1, btn.y + 1, btn.w - 1, btn.h - 1, 2)
   if btn.item ~= nil then
     local item,x,y,w,h = btn.item,btn.x,btn.y,btn.w,btn.h
     local ent = {x=x, y=y, sp=item.sp, offx=btn.offx, offy=btn.offy}
@@ -677,7 +680,7 @@ DINING_BUTTONS={}
 function init_buttons()
   local startx,starty = 0, 0
   local w,h = 20, 20
-  local c = 5
+  local c = 10
   for i=1,5 do
     for j=1,3 do
       local btn = make_button(startx + (w + 1) * i, starty + (h + 1) * j, w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil, nil, 2, 2)
