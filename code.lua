@@ -13,30 +13,6 @@ LEFT=2
 RIGHT=3
 Z=4
 
--- buttons state
-btn_st={
-  [UP]=false,
-  [DOWN]=false,
-  [LEFT]=false,
-  [RIGHT]=false,
-  [Z]=false
-}
-
--- triiger button event once on contituous button press
-function btno(id)
-  if btn(id) then
-    if not btn_st[id] then
-      btn_st[id]=true
-      return true
-    else
-      return false
-    end
-  else
-    btn_st[id]=false
-    return false
-  end
-end
-
 function deepcopy(orig)
   local orig_type = type(orig)
   local copy
@@ -207,9 +183,9 @@ end
 
 function eat( inv, item, count )
   it = inventory_get(inv, item.name)
-  if it == nil then 
+  if it == nil then
     trace(sf("no item %s in inventory!", item.name))
-    return false 
+    return false
   end
   eaten = math.min(count, it.count)
   HEALTH = HEALTH + it.nutr * eaten
@@ -256,14 +232,14 @@ function TICGame()
   end
   cls(13)
   draw_inventory(Inventory)
-  if btno(UP) then 
+  if btnp(UP) then
     itm1, itm2 = Inventory[1], Inventory[2]
     count = 2
     if make_recepie(Inventory, {itm1, itm2}, count) then
       on_action(Inventory)
     end
   end
-  if btno(DOWN) then
+  if btnp(DOWN) then
     itm1 = Inventory[1]
     count = 1
     if eat(Inventory, itm1, count) then
