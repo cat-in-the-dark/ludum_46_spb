@@ -250,7 +250,10 @@ function on_action( inv )
   HEALTH = HEALTH - 5
 end
 
-function TIC()
+function TICGame()
+  if HEALTH <= 0 then
+    state = GAMEOVER
+  end
   cls(13)
   draw_inventory(Inventory)
   if btno(UP) then 
@@ -270,4 +273,23 @@ function TIC()
 
   cleanup(Inventory)
   print(sf("Time: %d; Health: %d", TIME, HEALTH), 10, 120)
+end
+
+function TICGameover()
+  cls(1)
+  print("GAME OVER!")
+end
+
+GAME=1
+GAMEOVER=2
+
+state=GAME
+
+UPDATE={
+  [GAME]=TICGame,
+  [GAMEOVER]=TICGameover
+}
+
+function TIC()
+  UPDATE[state]()
 end
