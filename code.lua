@@ -399,9 +399,9 @@ end
 
 function inventory_get_count( inv, item, count )
   local it = inventory_get(inv, item)
-  if it.count >= count then 
+  if it.count >= count then
     return it
-  else 
+  else
     return nil
   end
 end
@@ -564,8 +564,8 @@ function on_inventory_click( btn )
     local inv_item = inventory_get(btn.inv, btn.item)
 
     local to_take = 1
-    if btn.inv.name == "Craftstable" and after_craft then 
-      to_take=inv_item.count 
+    if btn.inv.name == "Craftstable" and after_craft then
+      to_take=inv_item.count
       after_craft = false
     end
 
@@ -688,13 +688,13 @@ function init_buttons()
 
   startx,starty = 120, 0
   for i=1,2 do
-    local btn = make_button(startx + (w + 1) * i, starty + (h + 1), w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil, nil, 2, 2)  
+    local btn = make_button(startx + (w + 1) * i, starty + (h + 1), w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil, nil, 2, 2)
     table.insert(BUTTONS, btn)
     table.insert(CRAFT_BUTTONS, btn)
   end
 
   startx,starty = 141, 84
-  local btn = make_button(startx, starty, w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil, nil, 2, 2)  
+  local btn = make_button(startx, starty, w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil, nil, 2, 2)
   table.insert(BUTTONS, btn)
   table.insert(DINING_BUTTONS, btn)
 
