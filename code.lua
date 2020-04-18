@@ -243,7 +243,8 @@ function inventory_add( inv, name, count )
       return true
     end
   end
-  if inv.size > #inv then
+  trace(sf("%d %d", inv.size, #inv.items))
+  if inv.size > #inv.items then
     table.insert(inv.items, new_item)
     return true
   end
@@ -272,17 +273,20 @@ function make_recepie( inv, items, count )
     return false
   end
 
-  res = check_recepie(names)
+  local res = check_recepie(names)
   if res ~= nil then
     res_count = min_item_count * #items
-    inventory_add(inv, res, res_count)
-    trace(sf("add %s to inventory", res))
-    for i,it in ipairs(items) do
-      inv_it = inventory_get(inv, it)
-      if inv_it ~= nil then
-        inv_it.count = inv_it.count - min_item_count
-        if inv_it.count == 0 then removeFrom(inv.items, inv_it) end
+    if inventory_add(inv, res, res_count) then
+      trace(sf("add %s to inventory", res))
+      for i,it in ipairs(items) do
+        inv_it = inventory_get(inv, it)
+        if inv_it ~= nil then
+          inv_it.count = inv_it.count - min_item_count
+          if inv_it.count == 0 then removeFrom(inv.items, inv_it) end
+        end
       end
+    else trace(sf("Unable to add %s to inventory", res))
+      return false
     end
   else
     trace(sf("unable to craft from: %s", namestr))
