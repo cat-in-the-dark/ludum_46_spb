@@ -355,13 +355,16 @@ function make_recepie( inv )
   return true
 end
 
-function eat( inv, item, count )
-  it = inventory_take(inv, item, count)
+function eat( inv )
+  if #inv.items <= 0 then return false end
+
+  local item = inv.items[1]
+  it = inventory_take(inv, item, 1)
   if it == nil then
     trace(sf("no item %s in inventory!", item.name))
     return false
   end
-  HEALTH = HEALTH + it.nutr * it.count
+  HEALTH = HEALTH + it.nutr
   return true
 end
 
@@ -431,6 +434,12 @@ function on_craft_click( btn )
   end
 end
 
+function on_eat_click( btn )
+  if eat(Diningtable) then
+    on_action(ALL_INVENTORIES)
+  end
+end
+
 function update_buttons( btns )
   local mx,my,md = mouse()
   for i,v in ipairs(btns) do
@@ -458,6 +467,16 @@ function draw_craft_table( inv )
   end
   for i,it in ipairs(inv.items) do
     CRAFT_BUTTONS[i].item=it
+  end
+end
+
+function draw_dining_table( inv )
+  for i,btn in ipairs(DINING_BUTTONS) do
+    btn.item=nil
+    btn.inv=inv
+  end
+  for i,it in ipairs(inv.items) do
+    DINING_BUTTONS[i].item=it
   end
 end
 
@@ -493,9 +512,10 @@ end
 BUTTONS={}
 INV_BUTTONS={}
 CRAFT_BUTTONS={}
+DINING_BUTTONS={}
 
 function init_buttons()
-  local startx,starty = 50, 50
+  local startx,starty = 0, 0
   local w,h = 20, 20
   local c = 5
   for i=1,5 do
@@ -506,15 +526,23 @@ function init_buttons()
     end
   end
 
-  startx,starty = 150, 20
+  startx,starty = 120, 0
   for i=1,2 do
     local btn = make_button(startx + (w + 1) * i, starty + (h + 1), w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil)  
     table.insert(BUTTONS, btn)
     table.insert(CRAFT_BUTTONS, btn)
   end
 
-  local do_craft = make_button(180, 70, 40, 20, c, g_hover, g_leave, g_press, on_craft_click, nil)
+  startx,starty = 141, 84
+  local btn = make_button(startx, starty, w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil)  
+  table.insert(BUTTONS, btn)
+  table.insert(DINING_BUTTONS, btn)
+
+  local do_craft = make_button(141, 42, 41, 20, c, g_hover, g_leave, g_press, on_craft_click, nil)
   table.insert(BUTTONS, do_craft)
+
+  local do_eat = make_button(141, 106, 40, 20, c, g_hover, g_leave, g_press, on_eat_click, nil)
+  table.insert(BUTTONS, do_eat)
 end
 
 init_inv(Inventory)
@@ -529,21 +557,15 @@ function TICGame()
 
   cls(13)
 
-  if btnp(DOWN) then
-    itm1 = Inventory.items[1]
-    count = 1
-    if eat(Inventory, itm1, count) then
-      on_action(ALL_INVENTORIES)
-    end
-  end
-
   cleanup(Inventory.items)
   cleanup(Hand.items)
   cleanup(Craftstable.items)
+  cleanup(Diningtable.items)
   print(sf("Time: %d; Health: %d", TIME, HEALTH), 10, 120)
-  print(sf("(%d %d)", x, y), 10, 50)
+  print(sf("(%d %d)", x, y), 5, 5)
   draw_inventory(Inventory)
   draw_craft_table(Craftstable)
+  draw_dining_table(Diningtable)
   update_buttons(BUTTONS)
   draw_hand(Hand)
 end
