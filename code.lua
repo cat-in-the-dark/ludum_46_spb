@@ -7,6 +7,9 @@ T = 8
 W = 240
 H = 136
 
+W3D=80
+H3D=45
+
 sf = string.format
 
 UP=0
@@ -74,7 +77,7 @@ function table.matches( table1, table2 )
   return true
 end
 
--- texture helpers
+-- draw helpers
 
 function make_tex(c0,w,h)
   tex={}
@@ -112,6 +115,74 @@ function printframe(text,x,y,c,fc,small)
   print(text,x-1,y+1,fc,false,1,small)
   print(text,x+1,y+1,fc,false,1,small)
   print(text,x,y,c,false,1,small)
+end
+
+-- 3d
+
+cam={
+  x=0,
+  y=0,
+  z=0
+}
+
+function point_3d( x,y,z )
+  local dz = z - cam.z
+  local x2d,y2d = (x-cam.x)/dz, (y-cam.y)/dz
+  local xnorm, ynorm = (x2d + W3D/2) / W3D, (y2d + H3D/2) / H3D
+  local xproj, yproj = xnorm * W, (-ynorm + 1) * H
+  return xproj, yproj
+end
+
+function line_3d( x1,y1,z1,x2,y2,z2,c )
+  if z1 <= 0 or z2 <= 0 then return end
+  xn1,yn1 = point_3d(x1,y1,z1)
+  xn2,yn2 = point_3d(x2,y2,z2)
+  line(xn1,yn1,xn2,yn2,c)
+end
+
+function v3( x,y,z )
+  return {x=x,y=y,z=z}
+end
+
+function sq( v )
+  return v*v
+end
+
+function v2dist( v1,v2 )
+  local p1,p2 = sq(v1.x-v2.x),sq(v1.y-v2.y)
+  local res = math.sqrt(p1+p2)
+  trace(sf("%f:%f, %f:%f: %f", v1.x,v1.y,v2.x,v2.y, res))
+  return res
+end
+
+function v3add( v1,v2 )
+  return {x=v1.x+v2.x,y=v1.y+v2.y,z=v1.z+v2.z}
+end
+
+function line_3dv( v1,v2,c )
+  line_3d(v1.x,v1.y,v1.z,v2.x,v2.y,v2.z,c)
+end
+
+function line_3dvv( vecs,c )
+  for i=1,#vecs-1 do
+    line_3dv(vecs[i], vecs[i+1], c)
+  end
+end
+
+function circb_3dv( v,r,c )
+  local cx,cy = point_3d(v.x,v.y,v.z)
+  local dx=v3(r,0,0)
+  local p = v3add(v,dx)
+  local px,py = point_3d(p.x,p.y,p.z)
+  local r2d = math.abs(px-cx)
+  circb(cx,cy,r2d,c)
+end
+
+function rect_3d( x,y,z,w,h )
+  line_3d(x, y, z, x + w, y, z)
+  line_3d(x, y, z, x, y - h, z)
+  line_3d(x + w, y - h, z, x, y - h, z)
+  line_3d(x + w, y - h, z, x + w, y, z)
 end
 
 Names={
@@ -314,7 +385,7 @@ function g_leave( btn )
 end
 
 function make_button( x, y, w, h, color, on_hover, on_leave, on_press, on_release, on_enter, sp, offx, offy )
-  btn = deepcopy(Button)
+  local btn = deepcopy(Button)
   btn.x, btn.y = x,y
   btn.w, btn.h = w,h
   btn.color = color
@@ -642,6 +713,121 @@ function draw_hand( inv )
   end
 end
 
+radius=10
+angle=0
+angle1=0
+radius1=0.3
+a_speed=0.015
+w_speed=0.01
+
+function move_cam()
+  angle = angle + a_speed
+  angle1=angle1 + w_speed
+  cam.x = math.cos(angle) * radius
+  cam.y = math.sin(angle) * radius
+  cam.z = 0.2+math.sin(angle1) * radius1
+end
+
+pangle=0
+delta = math.pi / 10
+pspeed = 0.003
+min_angle,max_angle=pangle-delta,pangle+pspeed
+dir=1
+
+function draw_person(cx,cy)
+  b1 = v3(cx, cy,2.2)
+  t2=v3add(b1,v3(10,10,0))
+  t3=v3add(b1,v3(8,10,-0.2))
+  b2=v3add(b1,v3(12,0,0))
+  b3=v3add(b1,v3(10,0,-0.25))
+  line_3dvv({b1,t2,b2},2)
+  line_3dvv({b1,t3,b3},2)
+
+  -- top part
+  t1=v3(cx,cy+18,2.2)
+  local r=4
+  dy=v3(0,r,0)
+  local h = v3add(dy,t1)
+  b2=v3add(t1,v3(6,-2,0))
+  b3=v3add(t1,v3(4,-2,-0.2))
+  t2=v3add(t1,v3(2,2,0))
+  t3=v3add(t1,v3(0,2,-0.1))
+
+  pangle = pangle + dir*pspeed
+  if pangle <= min_angle or pangle >= max_angle then dir = -dir end
+
+  for i,v in ipairs({t1,b2,b3,t2,t3,h}) do
+    local dst = v2dist(v,b1)
+    local dangle = math.atan(v.y-b1.y,v.x-b1.x)
+    local temp = v3add(b1, v3(dst*math.cos(dangle+pangle),dst*math.sin(dangle+pangle), 0))
+    v.x,v.y=temp.x,temp.y
+  end
+
+  circb_3dv(h,r,2)
+  line_3dvv({t1,b2,t2},2)
+  line_3dvv({t1,b3,t3},2)
+  line_3dv(b1,t1,2)
+end
+
+function draw_room()
+  -- walls
+  local tlx, tly = -W3D / 2 - 10, H3D / 2 + 10
+  local trx, try = W3D / 2 + 10, H3D / 2 + 10
+  local blx, bly = -W3D / 2 - 10, -H3D / 2 - 10
+  local brx, bry = W3D / 2 + 10, -H3D / 2 - 10
+  line_3d(tlx, tly, 1, tlx, tly, 3, 2)
+  line_3d(trx, try, 1, trx, try, 3, 2)
+  line_3d(blx, bly, 1, blx, bly, 3, 2)
+  line_3d(brx, bry, 1, brx, bry, 3, 2)
+  rect_3d(tlx, tly, 3, trx-tlx, tly-bly)
+
+  -- table
+  local l1,l2,l3,l4 = v3(blx+2, bly, 2), v3(blx+2,bly,2.5), v3(blx+24,bly,2.5), v3(blx+24,bly,2)
+  local dy = v3(0,20,0)
+  local t1,t2,t3,t4 = v3add(l1,dy), v3add(l2,dy), v3add(l3,dy), v3add(l4,dy)
+  line_3dv(l1, t1, 2)
+  line_3dv(l2, t2, 2)
+  line_3dv(l3, t3, 2)
+  line_3dv(l4, t4, 2)
+  line_3dvv({t1, t2, t3, t4, t1}, 2)
+
+  -- fridge
+  local b1,b2,b3,b4 = v3(brx,bry,3), v3(brx-20,bry,3), v3(brx-20,bry,2.7),v3(brx,bry,2.7)
+  dy=v3(0,55,0)
+  t1,t2,t3,t4 = v3add(b1,dy), v3add(b2,dy), v3add(b3,dy), v3add(b4,dy)
+  line_3dvv({b1,b2,b3,b4,b1},2)
+  line_3dvv({t1,t2,t3,t4,t1},2)
+  line_3dvv({b1,b2,t2,t1,b1},2)
+  line_3dvv({b3,b4,t4,t3,b3},2)
+  dy=v3(0,30,0)
+  local h1,h2 = v3add(b2,dy),v3add(b3,dy)
+  line_3dv(h1,h2,2)
+
+  -- furniture 1
+  b1,b2,b3,b4 = v3(brx,bry,1), v3(brx,bry,2.7), v3(brx-18,bry,2.7),v3(brx-18,bry,1)
+  dy=v3(0,20,0)
+  t1,t2,t3,t4 = v3add(b1,dy), v3add(b2,dy), v3add(b3,dy), v3add(b4,dy)
+  line_3dvv({b1,b2,b3,b4,b1},2)
+  line_3dvv({t1,t2,t3,t4,t1},2)
+  line_3dvv({b1,b2,t2,t1,b1},2)
+  line_3dvv({b3,b4,t4,t3,b3},2)
+
+  -- window
+  t1,t2,t3,t4=v3(brx-30,bry+15,3),v3(blx+30,bry+15,3),v3(blx+30,tly-15,3),v3(brx-30,tly-15,3)
+  line_3dvv({t1,t2,t3,t4,t1},2)
+  local dx=v3(20,0,0)
+  h1,h2 = v3add(t3,dx),v3add(t2,dx)
+  line_3dv(h1,h2,c)
+  dy=v3(0,-13,0)
+  h1,h2 = v3add(t3,dy),v3add(t4,dy)
+  line_3dv(h1,h2,c)
+
+  -- person
+  draw_person(0, bly)
+end
+
+-- init
+
 function init_inv( inv )
   inventory_add(inv, Names.bw, 10)
   inventory_add(inv, Names.w, 90)
@@ -687,11 +873,16 @@ function TICGame()
 
   cls(13)
 
+  if btn(UP) then cam.y = cam.y - 1 end
+  if btn(DOWN) then cam.y = cam.y + 1 end
+  if btn(LEFT) then cam.x = cam.x - 1 end
+  if btn(RIGHT) then cam.x = cam.x + 1 end
+
   cleanup(Inventory.items)
   cleanup(Hand.items)
   cleanup(Craftstable.items)
-  print(sf("Time: %d; Health: %d", TIME, HEALTH), 10, 120)
-  print(sf("(%d %d)", x, y), 5, 5)
+  draw_room()
+  move_cam()
   draw_inventory(Inventory)
   draw_craft_table(Craftstable)
   update_buttons(BUTTONS)
