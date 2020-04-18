@@ -28,7 +28,7 @@ function deepcopy(orig)
       copy[deepcopy(orig_key)] = deepcopy(orig_value)
     end
     setmetatable(copy, deepcopy(getmetatable(orig)))
-  else -- number, string, boolean, etc
+  else
     copy = orig
   end
   return copy
@@ -123,6 +123,7 @@ Button={
   pressed=false,
   hover=false,
   color=0,
+  on_enter=nil,
   on_hover=nil,
   on_press=nil,
   on_release=nil,
@@ -131,7 +132,7 @@ Button={
 
 Inventory={
   items={},
-  size=15
+  size=5
 }
 Hand={
   items={},
@@ -163,7 +164,7 @@ function g_leave( btn )
   btn.color = 5
 end
 
-function make_button( x, y, w, h, color, on_hover, on_leave, on_press, on_release )
+function make_button( x, y, w, h, color, on_hover, on_leave, on_press, on_release, on_enter )
   btn = deepcopy(Button)
   btn.x, btn.y = x,y
   btn.w, btn.h = w,h
@@ -172,6 +173,7 @@ function make_button( x, y, w, h, color, on_hover, on_leave, on_press, on_releas
   btn.on_leave = on_leave
   btn.on_press = on_press
   btn.on_release = on_release
+  btn.on_enter = on_enter
   return btn
 end
 
@@ -190,10 +192,14 @@ function check_button( btn, mx, my, md )
     btn.hover = false
   end
 
-  if old_hover and not btn.hover then
+  if btn.hover then
     safe1(btn.on_hover, btn)
-  elseif not old_hover and btn.hover then
+  end
+
+  if old_hover and not btn.hover then
     safe1(btn.on_leave, btn)
+  elseif not old_hover and btn.hover then
+    safe1(btn.on_enter, btn)
   end
   if old_pressed and not btn.pressed then
     safe1(btn.on_press, btn)
@@ -204,7 +210,6 @@ end
 
 function draw_button( btn )
   rect(btn.x, btn.y, btn.w, btn.h, btn.color)
-  print(sf("%d %d %d %d %d", btn.x, btn.y, btn.w, btn.h, btn.color), 20, 60)
 end
 
 -- inventory
@@ -226,6 +231,31 @@ function inventory_get( inv, item )
   return nil
 end
 
+function inventory_get_count( inv, item, count )
+  local it = inventory_get(inv, item)
+  if it.count >= count then 
+    return it
+  else 
+    return nil
+  end
+end
+
+function inventory_take( inv, item, count )
+  for i,it in ipairs(inv.items) do
+    if it.name == item.name and it.spoil == item.spoil then
+      local taken = math.min(count, it.count)
+      local new_item = make_item(it.name, taken)
+      new_item.spoil = it.spoil
+      it.count = it.count - taken
+      if it.count == 0 then
+        removeFrom(inv, it, true)
+      end
+      return new_item
+    end
+  end
+  return nil
+end
+
 function inventory_get_by_name( inv, name )
   res = {}
   for i,it in ipairs(inv.items) do
@@ -234,21 +264,24 @@ function inventory_get_by_name( inv, name )
   return res
 end
 
-function inventory_add( inv, name, count )
-  local new_item = make_item(name, count)
-  local same_items = inventory_get_by_name(inv, name)
+function inventory_add_item( inv, item )
+  local same_items = inventory_get_by_name(inv, item.name)
   for i,same in ipairs(same_items) do
-    if same.spoil == new_item.spoil then
-      same.count = same.count + count
+    if same.spoil == item.spoil then
+      same.count = same.count + item.count
       return true
     end
   end
-  trace(sf("%d %d", inv.size, #inv.items))
   if inv.size > #inv.items then
-    table.insert(inv.items, new_item)
+    table.insert(inv.items, item)
     return true
   end
   return false
+end
+
+function inventory_add( inv, name, count )
+  local new_item = make_item(name, count)
+  return inventory_add_item(inv, new_item)
 end
 
 function check_recepie( names )
@@ -296,15 +329,12 @@ function make_recepie( inv, items, count )
 end
 
 function eat( inv, item, count )
-  it = inventory_get(inv, item)
+  it = inventory_take(inv, item, count)
   if it == nil then
     trace(sf("no item %s in inventory!", item.name))
     return false
   end
-  eaten = math.min(count, it.count)
-  HEALTH = HEALTH + it.nutr * eaten
-  it.count = it.count - eaten
-  if it.count == 0 then removeFrom(inv.items, it) end
+  HEALTH = HEALTH + it.nutr * it.count
   return true
 end
 
@@ -320,17 +350,75 @@ function update_spoil( inv )
   end
 end
 
+function on_inventory_hover( btn )
+  g_hover(btn)
+  local dx,dy = 5, 5
+  local mx,my = mouse()
+  if btn.item ~= nil then
+    print(sf("%s: %d", btn.item.name, btn.item.count), mx + dx, my + dy)
+  end
+end
+
+function move_item( to, from, item, count )
+  local temp_item = inventory_get_count(from, item, count)
+  if temp_item ~= nil then
+    local new_item = deepcopy(temp_item)
+    new_item.count = count
+    if inventory_add_item(to, new_item) then
+      inventory_take(from, item, count)
+      return true
+    else
+      return false
+    end
+  end
+  return false
+end
+
+function on_inventory_click( btn )
+  if btn.item ~= nil and btn.inv ~= nil then
+    local inv_item = inventory_get(btn.inv, btn.item)
+    if #Hand.items == 0 then
+      move_item(Hand, btn.inv, inv_item, 1)
+    else
+      if not move_item(Hand, btn.inv, inv_item, 1) then
+        local hand_item = Hand.items[1]
+        if inventory_add_item(btn.inv, hand_item) then
+          Hand.items = {}
+          move_item(Hand, btn.inv, inv_item, 1)
+        end
+      end
+    end
+  elseif #Hand.items > 0 then
+    move_item(btn.inv, Hand, Hand.items[1], Hand.items[1].count)
+  end
+end
+
 function update_buttons( btns )
   local mx,my,md = mouse()
   for i,v in ipairs(btns) do
-    check_button(v, mx, my, md)
     draw_button(v)
+  end
+  for i,v in ipairs(btns) do
+    check_button(v, mx, my, md)
   end
 end
 
 function draw_inventory( inv )
+  for i,btn in ipairs(INV_BUTTONS) do
+    btn.item=nil
+    btn.inv=inv
+  end
   for i,it in ipairs(inv.items) do
-    print(sf("%s: %d (%d days left)", it.name, it.count, it.spoil),10,i * T)
+    INV_BUTTONS[i].item=it
+  end
+end
+
+function draw_hand( inv )
+  local mx,my = mouse()
+  local dx,dy = 5, 10
+  if #inv.items == 1 and inv.items[1].count > 0 then
+    local item = inv.items[1]
+    print(sf("%s %d", item.name, item.count), mx+dx, my+dy)
   end
 end
 
@@ -347,10 +435,19 @@ function init_inv( inv )
 end
 
 BUTTONS={}
+INV_BUTTONS={}
 
 function init_buttons()
-  btn = make_button(50, 50, 20, 20, 5, g_hover, g_leave, g_press, g_release)
-  table.insert(BUTTONS, btn)
+  local startx,starty = 50, 50
+  local w,h = 20, 20
+  local c = 5
+  for i=1,5 do
+    for j=1,3 do
+      btn = make_button(startx + (w + 1) * i, starty + (h + 1) * j, w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil)
+      table.insert(BUTTONS, btn)
+      table.insert(INV_BUTTONS, btn)
+    end
+  end
 end
 
 init_inv(Inventory)
@@ -365,7 +462,6 @@ function TICGame()
 
   cls(13)
 
-  draw_inventory(Inventory)
   if btnp(UP) then
     itm1, itm2 = Inventory.items[1], Inventory.items[2]
     count = 2
@@ -384,6 +480,8 @@ function TICGame()
   cleanup(Inventory.items)
   print(sf("Time: %d; Health: %d", TIME, HEALTH), 10, 120)
   print(sf("(%d %d)", x, y), 10, 50)
+  draw_inventory(Inventory)
+  draw_hand(Hand)
   update_buttons(BUTTONS)
 end
 
