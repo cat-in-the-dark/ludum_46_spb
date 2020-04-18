@@ -151,7 +151,6 @@ end
 function v2dist( v1,v2 )
   local p1,p2 = sq(v1.x-v2.x),sq(v1.y-v2.y)
   local res = math.sqrt(p1+p2)
-  trace(sf("%f:%f, %f:%f: %f", v1.x,v1.y,v2.x,v2.y, res))
   return res
 end
 
@@ -882,7 +881,6 @@ function TICGame()
   cleanup(Hand.items)
   cleanup(Craftstable.items)
   draw_room()
-  move_cam()
   draw_inventory(Inventory)
   draw_craft_table(Craftstable)
   update_buttons(BUTTONS)
@@ -892,6 +890,8 @@ end
 function TICEating()
   cls(13)
   -- TODO: eat collected resources
+  draw_room()
+  move_cam()
   cleanup(Inventory.items)
   draw_inventory(Inventory)
   draw_buttons(INV_BUTTONS)
