@@ -74,37 +74,68 @@ function table.matches( table1, table2 )
   return true
 end
 
+-- texture helpers
+
+function make_tex(c0,w,h)
+  tex={}
+  for i=1,h do
+    tex[i]={}
+    for j=1,w do
+      tex[i][j]=c0 + (j-1) + (i-1)*16
+    end
+  end
+  return tex
+end
+
+function draw_entity( e )
+  if e.sp == nil then return end
+  local offx,offy = e.offx, e.offy
+  if offx == nil then offx = 0 end
+  if offy == nil then offy = 0 end
+  for i,t in ipairs(e.sp) do
+    for j,v in ipairs(t) do
+      spr(v, e.x+(j-1)*T + offx, e.y+(i-1)*T + offy, 0)
+    end
+  end
+end
+
 Names={
   bw="Buckwheat",
   tp="Toilet Paper",
   bwp="Buckwheat porridge",
-  w="Water"
+  w="Water",
+  chr="Charcoal powder"
 }
 
 Items={
   {
     name=Names.tp,
     nutr=0,
+    sp = make_tex(0, 2, 2),
     spoil=-1
   },
   {
     name=Names.bw,
     nutr=10,
+    sp = make_tex(2, 2, 2),
     spoil=-1
   },
   {
     name=Names.bwp,
     nutr=20,
+    sp = make_tex(6, 2, 2),
     spoil=3
   },
   {
     name=Names.w,
     nutr=1,
+    sp = make_tex(4, 2, 2),
     spoil=-1
   },
   {
     name=Names.chr,
     nutr=0,
+    sp=make_tex(8, 2, 2),
     spoil=-1
   }
 }
@@ -128,6 +159,9 @@ Button={
   pressed=false,
   hover=false,
   color=0,
+  sp={},
+  offx=0,
+  offy=0,
   on_enter=nil,
   on_hover=nil,
   on_press=nil,
@@ -184,7 +218,7 @@ function g_leave( btn )
   btn.color = 5
 end
 
-function make_button( x, y, w, h, color, on_hover, on_leave, on_press, on_release, on_enter )
+function make_button( x, y, w, h, color, on_hover, on_leave, on_press, on_release, on_enter, sp, offx, offy )
   btn = deepcopy(Button)
   btn.x, btn.y = x,y
   btn.w, btn.h = w,h
@@ -194,6 +228,9 @@ function make_button( x, y, w, h, color, on_hover, on_leave, on_press, on_releas
   btn.on_press = on_press
   btn.on_release = on_release
   btn.on_enter = on_enter
+  btn.sp = sp
+  btn.offx = offx
+  btn.offy = offy
   return btn
 end
 
@@ -230,6 +267,10 @@ end
 
 function draw_button( btn )
   rect(btn.x, btn.y, btn.w, btn.h, btn.color)
+  if btn.item ~= nil then
+    local ent = {x=btn.x, y=btn.y, sp=btn.item.sp, offx=btn.offx, offy=btn.offy}
+    draw_entity(ent)
+  end
 end
 
 -- inventory
@@ -520,7 +561,7 @@ function init_buttons()
   local c = 5
   for i=1,5 do
     for j=1,3 do
-      local btn = make_button(startx + (w + 1) * i, starty + (h + 1) * j, w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil)
+      local btn = make_button(startx + (w + 1) * i, starty + (h + 1) * j, w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil, nil, 2, 2)
       table.insert(BUTTONS, btn)
       table.insert(INV_BUTTONS, btn)
     end
@@ -528,13 +569,13 @@ function init_buttons()
 
   startx,starty = 120, 0
   for i=1,2 do
-    local btn = make_button(startx + (w + 1) * i, starty + (h + 1), w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil)  
+    local btn = make_button(startx + (w + 1) * i, starty + (h + 1), w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil, nil, 2, 2)  
     table.insert(BUTTONS, btn)
     table.insert(CRAFT_BUTTONS, btn)
   end
 
   startx,starty = 141, 84
-  local btn = make_button(startx, starty, w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil)  
+  local btn = make_button(startx, starty, w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil, nil, 2, 2)  
   table.insert(BUTTONS, btn)
   table.insert(DINING_BUTTONS, btn)
 
