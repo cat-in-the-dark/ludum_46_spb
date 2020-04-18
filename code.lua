@@ -13,6 +13,12 @@ LEFT=2
 RIGHT=3
 Z=4
 
+-- helpers
+
+function safe1( f, arg )
+  if f ~= nil then f(arg) end
+end
+
 function deepcopy(orig)
   local orig_type = type(orig)
   local copy
@@ -109,10 +115,99 @@ Recepies={
   }
 }
 
-Inventory={}
+Button={
+  x=0,
+  y=0,
+  w=0,
+  h=0,
+  pressed=false,
+  hover=false,
+  color=0,
+  on_hover=nil,
+  on_press=nil,
+  on_release=nil,
+  on_leave=nil
+}
+
+Inventory={
+  items={},
+  size=15
+}
+Hand={
+  items={},
+  size=1
+}
+Craftstable={
+  items={},
+  size=2
+}
 
 HEALTH=100
 TIME=0
+
+-- buttons
+
+function g_press( btn )
+  btn.color = 6
+end
+
+function g_release( btn )
+  btn.color = 7
+end
+
+function g_hover( btn )
+  btn.color = 8
+end
+
+function g_leave( btn )
+  btn.color = 5
+end
+
+function make_button( x, y, w, h, color, on_hover, on_leave, on_press, on_release )
+  btn = deepcopy(Button)
+  btn.x, btn.y = x,y
+  btn.w, btn.h = w,h
+  btn.color = color
+  btn.on_hover = on_hover
+  btn.on_leave = on_leave
+  btn.on_press = on_press
+  btn.on_release = on_release
+  return btn
+end
+
+function check_button( btn, mx, my, md )
+  local x,y,r,d = btn.x, btn.y, btn.x + btn.w, btn.y + btn.h
+  local old_hover = btn.hover
+  local old_pressed = btn.pressed
+  if x <= mx and r >= mx and y <= my and d >= my then
+    btn.hover = true
+    if md then
+      btn.pressed = true
+    else
+      btn.pressed = false
+    end
+  else
+    btn.hover = false
+  end
+
+  if old_hover and not btn.hover then
+    safe1(btn.on_hover, btn)
+  elseif not old_hover and btn.hover then
+    safe1(btn.on_leave, btn)
+  end
+  if old_pressed and not btn.pressed then
+    safe1(btn.on_press, btn)
+  elseif btn.pressed and not old_pressed then
+    safe1(btn.on_release, btn)
+  end
+end
+
+function draw_button( btn )
+  rect(btn.x, btn.y, btn.w, btn.h, btn.color)
+  print(sf("%d %d %d %d %d", btn.x, btn.y, btn.w, btn.h, btn.color), 20, 60)
+end
+
+-- inventory
 
 function make_item( name,count )
   for i,it in ipairs(Items) do
@@ -226,11 +321,24 @@ function on_action( inv )
   HEALTH = HEALTH - 5
 end
 
+BUTTONS={}
+
+function init_buttons()
+  btn = make_button(50, 50, 20, 20, 5, g_hover, g_leave, g_press, g_release)
+  table.insert(BUTTONS, btn)
+end
+
+init_buttons()
+
 function TICGame()
   if HEALTH <= 0 then
     state = GAMEOVER
   end
+
+  local x,y,left,right,middle,scrollx,scrolly=mouse()
+
   cls(13)
+
   draw_inventory(Inventory)
   if btnp(UP) then
     itm1, itm2 = Inventory[1], Inventory[2]
@@ -249,6 +357,8 @@ function TICGame()
 
   cleanup(Inventory)
   print(sf("Time: %d; Health: %d", TIME, HEALTH), 10, 120)
+  print(sf("(%d %d)", x, y), 10, 50)
+  update_buttons(BUTTONS)
 end
 
 function TICGameover()
