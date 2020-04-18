@@ -4,6 +4,8 @@
 -- script: lua
 
 T = 8
+W = 240
+H = 136
 
 sf = string.format
 
@@ -141,6 +143,10 @@ Hand={
 Craftstable={
   items={},
   size=2
+}
+Diningtable={
+  items={},
+  size=1
 }
 
 HEALTH=100
@@ -354,7 +360,7 @@ function on_inventory_hover( btn )
   g_hover(btn)
   local dx,dy = 5, 5
   local mx,my = mouse()
-  if btn.item ~= nil then
+  if btn.item ~= nil and btn.item.count > 0 then
     print(sf("%s: %d", btn.item.name, btn.item.count), mx + dx, my + dy)
   end
 end
@@ -380,17 +386,22 @@ function on_inventory_click( btn )
     if #Hand.items == 0 then
       move_item(Hand, btn.inv, inv_item, 1)
     else
-      if not move_item(Hand, btn.inv, inv_item, 1) then
-        local hand_item = Hand.items[1]
-        if inventory_add_item(btn.inv, hand_item) then
-          Hand.items = {}
-          move_item(Hand, btn.inv, inv_item, 1)
+      if Hand.prev_click == nil or Hand.prev_click == btn.inv then
+        if not move_item(Hand, btn.inv, inv_item, 1) then
+          local hand_item = Hand.items[1]
+          if inventory_add_item(btn.inv, hand_item) then
+            Hand.items = {}
+            move_item(Hand, btn.inv, inv_item, 1)
+          end
         end
+      else
+        move_item(btn.inv, Hand, Hand.items[1], Hand.items[1].count)
       end
     end
   elseif #Hand.items > 0 then
     move_item(btn.inv, Hand, Hand.items[1], Hand.items[1].count)
   end
+  Hand.prev_click = btn.inv
 end
 
 function update_buttons( btns )
@@ -413,12 +424,28 @@ function draw_inventory( inv )
   end
 end
 
+function draw_craft_table( inv )
+  for i,btn in ipairs(CRAFT_BUTTONS) do
+    btn.item=nil
+    btn.inv=inv
+  end
+  for i,it in ipairs(inv.items) do
+    CRAFT_BUTTONS[i].item=it
+  end
+end
+
 function draw_hand( inv )
   local mx,my = mouse()
   local dx,dy = 5, 10
   if #inv.items == 1 and inv.items[1].count > 0 then
     local item = inv.items[1]
-    print(sf("%s %d", item.name, item.count), mx+dx, my+dy)
+    local txt = sf("%s %d", item.name, item.count)
+    local width = print(txt, W, H)
+    if mx + dx + width > W then
+      print(txt, W - width, my+dy)
+    else
+      print(txt, mx + dx, my+dy)
+    end
   end
 end
 
@@ -436,6 +463,7 @@ end
 
 BUTTONS={}
 INV_BUTTONS={}
+CRAFT_BUTTONS={}
 
 function init_buttons()
   local startx,starty = 50, 50
@@ -447,6 +475,13 @@ function init_buttons()
       table.insert(BUTTONS, btn)
       table.insert(INV_BUTTONS, btn)
     end
+  end
+
+  startx,starty = 150, 20
+  for i=1,2 do
+    btn = make_button(startx + (w + 1) * i, starty + (h + 1), w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil)  
+    table.insert(BUTTONS, btn)
+    table.insert(CRAFT_BUTTONS, btn)
   end
 end
 
@@ -478,11 +513,14 @@ function TICGame()
   end
 
   cleanup(Inventory.items)
+  cleanup(Hand.items)
+  cleanup(Craftstable.items)
   print(sf("Time: %d; Health: %d", TIME, HEALTH), 10, 120)
   print(sf("(%d %d)", x, y), 10, 50)
   draw_inventory(Inventory)
-  draw_hand(Hand)
+  draw_craft_table(Craftstable)
   update_buttons(BUTTONS)
+  draw_hand(Hand)
 end
 
 function TICGameover()
