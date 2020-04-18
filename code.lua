@@ -99,12 +99,36 @@ function draw_entity( e )
   end
 end
 
+function printframe(text,x,y,c,fc,small)
+  c = c or 15
+  fc = fc or 0
+  small = small or false
+  print(text,x-1,y,fc,false,1,small)
+  print(text,x+1,y,fc,false,1,small)
+  print(text,x,y-1,fc,false,1,small)
+  print(text,x,y+1,fc,false,1,small)
+  print(text,x-1,y-1,fc,false,1,small)
+  print(text,x+1,y-1,fc,false,1,small)
+  print(text,x-1,y+1,fc,false,1,small)
+  print(text,x+1,y+1,fc,false,1,small)
+  print(text,x,y,c,false,1,small)
+end
+
 Names={
   bw="Buckwheat",
   tp="Toilet Paper",
   bwp="Buckwheat porridge",
   w="Water",
-  chr="Charcoal powder"
+  chr="Charcoal powder",
+  mlk="Milk",
+  ch1="Curd Cheese",
+  ch2="Cheese",
+  flw="Buckwheat Flower",
+  brd="Bread",
+  ink="Ink",
+  pap="Paper",
+  scrl="Scroll of Wisdom",
+  ndls="Noodles",
 }
 
 Items={
@@ -137,6 +161,51 @@ Items={
     nutr=0,
     sp=make_tex(8, 2, 2),
     spoil=-1
+  },
+  {
+    name=Names.mlk,
+    nutr=1,
+    spoil=-1
+  },
+  {
+    name=Names.ch1,
+    nutr=1,
+    spoil=-1
+  },
+  {
+    name=Names.ch2,
+    nutr=1,
+    spoil=-1
+  },
+  {
+    name=Names.flw,
+    nutr=1,
+    spoil=-1
+  },
+  {
+    name=Names.brd,
+    nutr=1,
+    spoil=-1
+  },
+  {
+    name=Names.ink,
+    nutr=1,
+    spoil=-1
+  },
+  {
+    name=Names.pap,
+    nutr=1,
+    spoil=-1
+  },
+  {
+    name=Names.scrl,
+    nutr=1,
+    spoil=-1
+  },
+  {
+    name=Names.ndls,
+    nutr=1,
+    spoil=-1
   }
 }
 
@@ -148,6 +217,38 @@ Recepies={
   {
     items={Names.tp},
     res=Names.chr
+  },
+  {
+    items={Names.mlk},
+    res=Names.ch1
+  },
+  {
+    items={Names.ch1},
+    res=Names.ch2
+  },
+  {
+    items={Names.bw},
+    res=Names.flw
+  },
+  {
+    items={Names.tp, Names.w},
+    res=Names.pap
+  },
+  {
+    items={Names.flw, Names.mlk},
+    res=Names.brd
+  },
+  {
+    items={Names.flw, Names.w},
+    res=Names.ndls
+  },
+  {
+    items={Names.chr, Names.w},
+    res=Names.ink
+  },
+  {
+    items={Names.ink, Names.pap},
+    res=Names.scrl
   }
 }
 
@@ -172,7 +273,7 @@ Button={
 Inventory={
   name="Inventory",
   items={},
-  size=5
+  size=15
 }
 Hand={
   name="Hand",
@@ -268,8 +369,12 @@ end
 function draw_button( btn )
   rect(btn.x, btn.y, btn.w, btn.h, btn.color)
   if btn.item ~= nil then
-    local ent = {x=btn.x, y=btn.y, sp=btn.item.sp, offx=btn.offx, offy=btn.offy}
+    local item,x,y,w,h = btn.item,btn.x,btn.y,btn.w,btn.h
+    local ent = {x=x, y=y, sp=item.sp, offx=btn.offx, offy=btn.offy}
     draw_entity(ent)
+    local count = item.count
+    local width = print(count,W,H,15,false,1,true)
+    printframe(count,x+w-width-1,y+h-6,15,0,true)
   end
 end
 
@@ -423,10 +528,17 @@ end
 
 function on_inventory_hover( btn )
   g_hover(btn)
-  local dx,dy = 5, 5
-  local mx,my = mouse()
   if btn.item ~= nil and btn.item.count > 0 then
-    print(sf("%s: %d", btn.item.name, btn.item.count), mx + dx, my + dy)
+    if #Hand.items > 0 then return end
+    local dx,dy = 5, 5
+    local mx,my = mouse()
+    local it = btn.item
+    local exp_str = sf("%d days", it.spoil)
+    if it.spoil == -1 then exp_str = "Never"
+    elseif it.spoil == 1 then exp_str = "1 day" end
+    local text = sf("%s\nNutrition: %d\nExpires in: %s", it.name, it.nutr, exp_str)
+    local width = print(text, W, H)
+    printframe(text, math.min(W-width, mx + dx), my + dy)
   end
 end
 
@@ -523,16 +635,12 @@ end
 
 function draw_hand( inv )
   local mx,my = mouse()
-  local dx,dy = 5, 10
+  local dx,dy = -15, -15
   if #inv.items == 1 and inv.items[1].count > 0 then
     local item = inv.items[1]
-    local txt = sf("%s %d", item.name, item.count)
-    local width = print(txt, W, H)
-    if mx + dx + width > W then
-      print(txt, W - width, my+dy)
-    else
-      print(txt, mx + dx, my+dy)
-    end
+    draw_entity({x=mx+dx,y=my+dy,sp=item.sp})
+    local width = print(item.count, W, H, 0, false, 1, true)
+    printframe(item.count, mx+dx+16-width, my+dy+10, 15, 0, true)
   end
 end
 
@@ -548,6 +656,7 @@ function init_inv( inv )
   inventory_add(inv, Names.bw, 10)
   inventory_add(inv, Names.w, 90)
   inventory_add(inv, Names.tp, 10)
+  inventory_add(inv, Names.mlk, 5)
 end
 
 BUTTONS={}
