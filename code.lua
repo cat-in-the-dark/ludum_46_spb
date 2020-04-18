@@ -285,17 +285,11 @@ Craftstable={
   items={},
   size=2
 }
-Diningtable={
-  name="Diningtable",
-  items={},
-  size=1
-}
 
 ALL_INVENTORIES={
   Inventory,
   Hand,
-  Craftstable,
-  Diningtable
+  Craftstable
 }
 
 HEALTH=100
@@ -596,21 +590,22 @@ end
 function on_craft_click( btn )
   if make_recepie(Craftstable) then
     after_craft = true
-    on_action(ALL_INVENTORIES)
   end
 end
 
 function on_eat_click( btn )
-  if eat(Diningtable) then
-    on_action(ALL_INVENTORIES)
+  state = EATING
+end
+
+function draw_buttons( btns )
+  for i,v in ipairs(btns) do
+    draw_button(v)
   end
 end
 
 function update_buttons( btns )
   local mx,my,md = mouse()
-  for i,v in ipairs(btns) do
-    draw_button(v)
-  end
+  draw_buttons(btns)
   for i,v in ipairs(btns) do
     check_button(v, mx, my, md)
   end
@@ -636,16 +631,6 @@ function draw_craft_table( inv )
   end
 end
 
-function draw_dining_table( inv )
-  for i,btn in ipairs(DINING_BUTTONS) do
-    btn.item=nil
-    btn.inv=inv
-  end
-  for i,it in ipairs(inv.items) do
-    DINING_BUTTONS[i].item=it
-  end
-end
-
 function draw_hand( inv )
   local mx,my = mouse()
   local dx,dy = -15, -15
@@ -655,14 +640,6 @@ function draw_hand( inv )
     local width = print(item.count, W, H, 0, false, 1, true)
     printframe(item.count, mx+dx+16-width, my+dy+10, 15, 0, true)
   end
-end
-
-function on_action( invs )
-  for i,inv in ipairs(invs) do
-    update_spoil(inv)
-  end
-  TIME=TIME+1
-  HEALTH = HEALTH - 5
 end
 
 function init_inv( inv )
@@ -675,7 +652,6 @@ end
 BUTTONS={}
 INV_BUTTONS={}
 CRAFT_BUTTONS={}
-DINING_BUTTONS={}
 
 function init_buttons()
   local startx,starty = 0, 0
@@ -696,11 +672,6 @@ function init_buttons()
     table.insert(CRAFT_BUTTONS, btn)
   end
 
-  startx,starty = 141, 84
-  local btn = make_button(startx, starty, w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil, nil, 2, 2)
-  table.insert(BUTTONS, btn)
-  table.insert(DINING_BUTTONS, btn)
-
   local do_craft = make_button(141, 42, 41, 20, c, g_hover, g_leave, g_press, on_craft_click, nil)
   table.insert(BUTTONS, do_craft)
 
@@ -712,10 +683,6 @@ init_inv(Inventory)
 init_buttons()
 
 function TICGame()
-  if HEALTH <= 0 then
-    state = GAMEOVER
-  end
-
   local x,y,left,right,middle,scrollx,scrolly=mouse()
 
   cls(13)
@@ -723,14 +690,21 @@ function TICGame()
   cleanup(Inventory.items)
   cleanup(Hand.items)
   cleanup(Craftstable.items)
-  cleanup(Diningtable.items)
   print(sf("Time: %d; Health: %d", TIME, HEALTH), 10, 120)
   print(sf("(%d %d)", x, y), 5, 5)
   draw_inventory(Inventory)
   draw_craft_table(Craftstable)
-  draw_dining_table(Diningtable)
   update_buttons(BUTTONS)
   draw_hand(Hand)
+end
+
+function TICEating()
+  cls(13)
+  -- TODO: eat collected resources
+  cleanup(Inventory.items)
+  draw_inventory(Inventory)
+  draw_buttons(INV_BUTTONS)
+  print("Eating...")
 end
 
 function TICGameover()
@@ -740,12 +714,14 @@ end
 
 GAME=1
 GAMEOVER=2
+EATING=3
 
 state=GAME
 
 UPDATE={
   [GAME]=TICGame,
-  [GAMEOVER]=TICGameover
+  [GAMEOVER]=TICGameover,
+  [EATING]=TICEating
 }
 
 function TIC()
