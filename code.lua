@@ -557,18 +557,27 @@ function move_item( to, from, item, count )
   return false
 end
 
+after_craft = false
+
 function on_inventory_click( btn )
   if btn.item ~= nil and btn.inv ~= nil then
     local inv_item = inventory_get(btn.inv, btn.item)
+
+    local to_take = 1
+    if btn.inv.name == "Craftstable" and after_craft then 
+      to_take=inv_item.count 
+      after_craft = false
+    end
+
     if #Hand.items == 0 then
-      move_item(Hand, btn.inv, inv_item, 1)
+      move_item(Hand, btn.inv, inv_item, to_take)
     else
       if Hand.prev_click == nil or Hand.prev_click == btn.inv then
-        if not move_item(Hand, btn.inv, inv_item, 1) then
+        if not move_item(Hand, btn.inv, inv_item, to_take) then
           local hand_item = Hand.items[1]
           if inventory_add_item(btn.inv, hand_item) then
             Hand.items = {}
-            move_item(Hand, btn.inv, inv_item, 1)
+            move_item(Hand, btn.inv, inv_item, to_take)
           end
         end
       else
@@ -583,6 +592,7 @@ end
 
 function on_craft_click( btn )
   if make_recepie(Craftstable) then
+    after_craft = true
     on_action(ALL_INVENTORIES)
   end
 end
