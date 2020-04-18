@@ -37,6 +37,9 @@ function deepcopy(orig)
 end
 
 function removeFrom(tab,obj,toDel)
+  if not table.contains(tab, obj) then
+    trace("table does not contain object!!!")
+  end
   obj.__rem=true
   obj.__del=toDel
 end
@@ -133,20 +136,31 @@ Button={
 }
 
 Inventory={
+  name="Inventory",
   items={},
   size=5
 }
 Hand={
+  name="Hand",
   items={},
   size=1
 }
 Craftstable={
+  name="Craftstable",
   items={},
   size=2
 }
 Diningtable={
+  name="Diningtable",
   items={},
   size=1
+}
+
+ALL_INVENTORIES={
+  Inventory,
+  Hand,
+  Craftstable,
+  Diningtable
 }
 
 HEALTH=100
@@ -254,7 +268,7 @@ function inventory_take( inv, item, count )
       new_item.spoil = it.spoil
       it.count = it.count - taken
       if it.count == 0 then
-        removeFrom(inv, it, true)
+        removeFrom(inv.items, it, true)
       end
       return new_item
     end
@@ -297,14 +311,14 @@ function check_recepie( names )
   return nil
 end
 
-function make_recepie( inv, items, count )
+function make_recepie( inv )
   names = {}
   namestr = ""
-  min_item_count = count
-  for i,it in ipairs(items) do
+  min_item_count = -1
+  for i,it in ipairs(inv.items) do
     table.insert(names, it.name)
     namestr = sf("%s%s; ", namestr, it.name)
-    if min_item_count > it.count then min_item_count = it.count end
+    if min_item_count == -1 or min_item_count > it.count then min_item_count = it.count end
   end
 
   if min_item_count == 0 then
@@ -314,17 +328,24 @@ function make_recepie( inv, items, count )
 
   local res = check_recepie(names)
   if res ~= nil then
-    res_count = min_item_count * #items
-    if inventory_add(inv, res, res_count) then
-      trace(sf("add %s to inventory", res))
-      for i,it in ipairs(items) do
-        inv_it = inventory_get(inv, it)
-        if inv_it ~= nil then
-          inv_it.count = inv_it.count - min_item_count
-          if inv_it.count == 0 then removeFrom(inv.items, inv_it) end
-        end
-      end
-    else trace(sf("Unable to add %s to inventory", res))
+    res_count = min_item_count * #inv.items
+    -- check if have all items to remove
+    for i,it in ipairs(inv.items) do
+      local test = inventory_get_count(inv, it, min_item_count)
+      if test == nil or test.count == 0 then return false end
+    end
+
+    -- remove items to make room for new item
+    for i,it in ipairs(inv.items) do
+      inventory_take(inv, it, min_item_count)
+    end
+
+    -- cleanup
+    cleanup(inv.items)
+
+    -- add new item
+    if not inventory_add(inv, res, res_count) then
+      trace(sf("Unable to add %s to inventory", res))
       return false
     end
   else
@@ -404,6 +425,12 @@ function on_inventory_click( btn )
   Hand.prev_click = btn.inv
 end
 
+function on_craft_click( btn )
+  if make_recepie(Craftstable) then
+    on_action(ALL_INVENTORIES)
+  end
+end
+
 function update_buttons( btns )
   local mx,my,md = mouse()
   for i,v in ipairs(btns) do
@@ -449,8 +476,10 @@ function draw_hand( inv )
   end
 end
 
-function on_action( inv )
-  update_spoil(inv)
+function on_action( invs )
+  for i,inv in ipairs(invs) do
+    update_spoil(inv)
+  end
   TIME=TIME+1
   HEALTH = HEALTH - 5
 end
@@ -471,7 +500,7 @@ function init_buttons()
   local c = 5
   for i=1,5 do
     for j=1,3 do
-      btn = make_button(startx + (w + 1) * i, starty + (h + 1) * j, w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil)
+      local btn = make_button(startx + (w + 1) * i, starty + (h + 1) * j, w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil)
       table.insert(BUTTONS, btn)
       table.insert(INV_BUTTONS, btn)
     end
@@ -479,10 +508,13 @@ function init_buttons()
 
   startx,starty = 150, 20
   for i=1,2 do
-    btn = make_button(startx + (w + 1) * i, starty + (h + 1), w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil)  
+    local btn = make_button(startx + (w + 1) * i, starty + (h + 1), w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil)  
     table.insert(BUTTONS, btn)
     table.insert(CRAFT_BUTTONS, btn)
   end
+
+  local do_craft = make_button(180, 70, 40, 20, c, g_hover, g_leave, g_press, on_craft_click, nil)
+  table.insert(BUTTONS, do_craft)
 end
 
 init_inv(Inventory)
@@ -497,18 +529,11 @@ function TICGame()
 
   cls(13)
 
-  if btnp(UP) then
-    itm1, itm2 = Inventory.items[1], Inventory.items[2]
-    count = 2
-    if make_recepie(Inventory, {itm1, itm2}, count) then
-      on_action(Inventory)
-    end
-  end
   if btnp(DOWN) then
     itm1 = Inventory.items[1]
     count = 1
     if eat(Inventory, itm1, count) then
-      on_action(Inventory)
+      on_action(ALL_INVENTORIES)
     end
   end
 
