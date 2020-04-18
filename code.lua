@@ -219,20 +219,35 @@ function make_item( name,count )
   end
 end
 
-function inventory_get( inv, name )
-  for i,it in ipairs(inv) do
-    if it.name == name then return it end
+function inventory_get( inv, item )
+  for i,it in ipairs(inv.items) do
+    if it.name == item.name and it.spoil == item.spoil then return it end
   end
   return nil
 end
 
-function inventory_add( inv, name, count )
-  it = inventory_get(inv, name)
-  if it ~= nil then
-    it.count = it.count + count
-  else
-    table.insert(inv, make_item(name, count))
+function inventory_get_by_name( inv, name )
+  res = {}
+  for i,it in ipairs(inv.items) do
+    if it.name == name then table.insert(res, it) end
   end
+  return res
+end
+
+function inventory_add( inv, name, count )
+  local new_item = make_item(name, count)
+  local same_items = inventory_get_by_name(inv, name)
+  for i,same in ipairs(same_items) do
+    if same.spoil == new_item.spoil then
+      same.count = same.count + count
+      return true
+    end
+  end
+  if inv.size > #inv then
+    table.insert(inv.items, new_item)
+    return true
+  end
+  return false
 end
 
 function check_recepie( names )
@@ -260,13 +275,13 @@ function make_recepie( inv, items, count )
   res = check_recepie(names)
   if res ~= nil then
     res_count = min_item_count * #items
-    inventory_add(Inventory, res, res_count)
+    inventory_add(inv, res, res_count)
     trace(sf("add %s to inventory", res))
     for i,it in ipairs(items) do
-      inv_it = inventory_get(inv, it.name)
+      inv_it = inventory_get(inv, it)
       if inv_it ~= nil then
         inv_it.count = inv_it.count - min_item_count
-        if inv_it.count == 0 then removeFrom(inv, inv_it) end
+        if inv_it.count == 0 then removeFrom(inv.items, inv_it) end
       end
     end
   else
@@ -277,7 +292,7 @@ function make_recepie( inv, items, count )
 end
 
 function eat( inv, item, count )
-  it = inventory_get(inv, item.name)
+  it = inventory_get(inv, item)
   if it == nil then
     trace(sf("no item %s in inventory!", item.name))
     return false
@@ -285,32 +300,32 @@ function eat( inv, item, count )
   eaten = math.min(count, it.count)
   HEALTH = HEALTH + it.nutr * eaten
   it.count = it.count - eaten
-  if it.count == 0 then removeFrom(inv, it) end
+  if it.count == 0 then removeFrom(inv.items, it) end
   return true
 end
 
 function update_spoil( inv )
-  for i,it in ipairs(inv) do
+  for i,it in ipairs(inv.items) do
     if it.spoil ~= -1 then
       it.spoil = it.spoil - 1
       if it.spoil == 0 then
         trace(sf("Remove %s from inv; spoiled!", it.name))
-        removeFrom(inv, it, true)
+        removeFrom(inv.items, it, true)
       end
     end
   end
 end
 
-function init_inv( inv )
-  inventory_add(inv, Names.bw, 10)
-  inventory_add(inv, Names.w, 90)
-  inventory_add(inv, Names.tp, 10)
+function update_buttons( btns )
+  local mx,my,md = mouse()
+  for i,v in ipairs(btns) do
+    check_button(v, mx, my, md)
+    draw_button(v)
+  end
 end
 
-init_inv(Inventory)
-
 function draw_inventory( inv )
-  for i,it in ipairs(inv) do
+  for i,it in ipairs(inv.items) do
     print(sf("%s: %d (%d days left)", it.name, it.count, it.spoil),10,i * T)
   end
 end
@@ -321,6 +336,12 @@ function on_action( inv )
   HEALTH = HEALTH - 5
 end
 
+function init_inv( inv )
+  inventory_add(inv, Names.bw, 10)
+  inventory_add(inv, Names.w, 90)
+  inventory_add(inv, Names.tp, 10)
+end
+
 BUTTONS={}
 
 function init_buttons()
@@ -328,6 +349,7 @@ function init_buttons()
   table.insert(BUTTONS, btn)
 end
 
+init_inv(Inventory)
 init_buttons()
 
 function TICGame()
@@ -341,21 +363,21 @@ function TICGame()
 
   draw_inventory(Inventory)
   if btnp(UP) then
-    itm1, itm2 = Inventory[1], Inventory[2]
+    itm1, itm2 = Inventory.items[1], Inventory.items[2]
     count = 2
     if make_recepie(Inventory, {itm1, itm2}, count) then
       on_action(Inventory)
     end
   end
   if btnp(DOWN) then
-    itm1 = Inventory[1]
+    itm1 = Inventory.items[1]
     count = 1
     if eat(Inventory, itm1, count) then
       on_action(Inventory)
     end
   end
 
-  cleanup(Inventory)
+  cleanup(Inventory.items)
   print(sf("Time: %d; Health: %d", TIME, HEALTH), 10, 120)
   print(sf("(%d %d)", x, y), 10, 50)
   update_buttons(BUTTONS)
