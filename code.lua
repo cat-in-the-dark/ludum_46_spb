@@ -289,7 +289,12 @@ Names={
   pap="Paper",
   scrl="Scroll of Wisdom",
   ndls="Noodles",
-  dftp="Deep Fried Toilet Paper"
+  snw="Sandwich",
+  crk="Cracker",
+  dftp="Deep Fried Toilet Paper",
+  mush="Mushy goo",
+  vngr="Vinegar",
+  chs="Cheese"
 }
 
 Items={
@@ -343,7 +348,7 @@ Items={
   },
   {
     name=Names.brd,
-    nutr=15,
+    nutr=8,
     sp=make_tex(32, 2, 2),
     spoil=15
   },
@@ -373,9 +378,39 @@ Items={
   },
   {
     name=Names.dftp,
-    nutr=15,
+    nutr=8,
     sp=make_tex(42, 2, 2),
     spoil=-1
+  },
+  {
+    name=Names.snw,
+    nutr=10,
+    sp=make_tex(44, 2, 2),
+    spoil=10
+  },
+  {
+    name=Names.crk,
+    nutr=6,
+    sp=make_tex(46, 2, 2),
+    spoil=-1
+  },
+  {
+    name=Names.mush,
+    nutr=5,
+    sp=make_tex(64, 2, 2),
+    spoil=1
+  },
+  {
+    name=Names.vngr,
+    nutr=0,
+    sp=make_tex(66, 2, 2),
+    spoil=-1
+  },
+  {
+    name=Names.chs,
+    nutr=12,
+    sp=make_tex(68, 2, 2),
+    spoil=30
   }
 }
 
@@ -470,7 +505,27 @@ Recepies={
   {
     items={Names.scrl},
     res={magic=enhance_craftstable}
-  }
+  },
+  {
+    items={Names.brd, Names.bt},
+    res=Names.snw
+  },
+  {
+    items={Names.brd},
+    res=Names.crk
+  },
+  {
+    items={Names.crk,Names.mlk},
+    res=Names.mush
+  },
+  {
+    items={Names.mush,Names.w},
+    res=Names.vngr
+  },
+  {
+    items={Names.vngr,Names.mlk},
+    res=Names.chs
+  },
 }
 
 HEALTH=100
@@ -1232,13 +1287,6 @@ function INITIntro()
   LOGO_Y=H
 end
 
-function INITGame()
-  restore_madness()
-  restore_person()
-  init_inv(Inventory)
-  init_buttons()
-end
-
 function INITGameover()
   RESY=H
 end
@@ -1296,6 +1344,19 @@ function INITEating()
   init_inventory_room_coords(Inventory)
 end
 
+function INITGame()
+  restore_madness()
+  restore_person()
+  init_inv(Inventory)
+  Craftstable.size=2
+  init_buttons()
+end
+
+tut_shown=false
+stage=0
+pass = 0
+PASS_MAX=120
+
 function TICGame()
   local x,y,left,right,middle,scrollx,scrolly=mouse()
 
@@ -1311,6 +1372,32 @@ function TICGame()
   draw_log()
   update_log()
   draw_hand(Hand)
+
+  if not tut_shown then
+    if stage == 0 then
+      pass = pass + 1
+      if pass >= PASS_MAX then
+        stage = 1
+      end
+    elseif stage == 1 then
+      add_log("Prepare yourself for lockdown!")
+      pass = 0
+      stage=2
+    elseif stage == 2 then
+      pass = pass + 1
+      if pass >= PASS_MAX then stage = 3 end
+    elseif stage == 3 then
+      add_log("Craft as many food as you can!")
+      stage = 4
+      pass = 0
+    elseif stage == 4 then
+      pass = pass + 1
+      if pass >= 60 then stage = 5 end
+    elseif stage == 5 then
+      add_log("Using everything you have!")
+      tut_shown = true
+    end
+  end
 end
 
 function TICEating()
@@ -1339,7 +1426,7 @@ function TICGameover()
   -- stop twitching
   pspeed=0
 
-  if cam.z > -3 then
+  if cam.z > -2 then
     draw_inventory_in_room(Inventory)
     draw_item_to_eat(get_item_to_eat(Inventory))
   end
