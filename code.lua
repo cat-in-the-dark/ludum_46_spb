@@ -129,6 +129,75 @@ function printframe(text,x,y,c,fc,small)
   print(text,x,y,c,false,1,small)
 end
 
+-- log
+
+function splittokens(s)
+  local res = {}
+  for w in s:gmatch("%S+") do
+    res[#res+1] = w
+  end
+  return res
+end
+ 
+function textwrap(text, linewidth)
+  if not linewidth then
+    linewidth = 75
+  end
+
+  local spaceleft = linewidth
+  local res = {}
+  local line = {}
+
+  for _, word in ipairs(splittokens(text)) do
+    if #word + 1 > spaceleft then
+      table.insert(res, table.concat(line, ' '))
+      line = {word}
+      spaceleft = linewidth - #word
+    else
+      table.insert(line, word)
+      spaceleft = spaceleft - (#word + 1)
+    end
+  end
+
+  table.insert(res, table.concat(line, ' '))
+  return res
+end
+
+LOGX,LOGY=10,110
+LOG={}
+LOGSTR_LIFETIME=180
+CUR_HEIGHT=0
+
+function add_log( str )
+  local tokens = textwrap(str,40)
+  for i,t in ipairs(tokens) do
+    table.insert(LOG,{str=t,t=0})
+  end
+end
+
+function update_log()
+  for i,v in ipairs(LOG) do
+    v.t = v.t + 1
+    if v.t > LOGSTR_LIFETIME then
+      removeFrom(LOG,v,true)
+    end
+  end
+  cleanup(LOG)
+end
+
+function draw_log()
+  local height = #LOG * T
+  if CUR_HEIGHT < height then
+    CUR_HEIGHT = CUR_HEIGHT + 1
+  elseif CUR_HEIGHT > height then
+    CUR_HEIGHT = height
+  end
+
+  for i,v in ipairs(LOG) do
+    printframe(v.str,LOGX,H-CUR_HEIGHT+(i-1)*T)
+  end
+end
+
 -- 3d
 
 cam={
@@ -558,11 +627,16 @@ end
 
 function make_recepie( inv )
   names = {}
+  if #inv.items == 0 then
+    add_log("Place ingredients here to craft new item")
+    return
+  end
   namestr = ""
   min_item_count = -1
   for i,it in ipairs(inv.items) do
     table.insert(names, it.name)
-    namestr = sf("%s%s; ", namestr, it.name)
+    if string.len(namestr) == 0 then namestr = it.name
+    else namestr = sf("%s; %s ", namestr, it.name) end
     if min_item_count == -1 or min_item_count > it.count then min_item_count = it.count end
   end
 
@@ -594,8 +668,15 @@ function make_recepie( inv )
       return false
     end
   else
-    trace(sf("unable to craft from: %s", namestr))
+    add_log(sf("Unable to craft from: %s", namestr))
     return false
+  end
+
+  for i,itm in ipairs(Items) do
+    if itm.name == res and not itm.discovered then
+      itm.discovered = true
+      add_log(sf("New discovery: %s!", res))
+    end
   end
   return true
 end
@@ -618,7 +699,7 @@ function update_spoil( inv )
     if it.spoil ~= -1 then
       it.spoil = it.spoil - 1
       if it.spoil == 0 then
-        trace(sf("Remove %s from inv; spoiled!", it.name))
+        add_log(sf("%d pcs of %s have spoiled!", it.count, it.name))
         removeFrom(inv.items, it, true)
       end
     end
@@ -1000,6 +1081,7 @@ function init_inventory_room_coords( inv )
 end
 
 function INITGame()
+  cam={x=0,y=0,z=0}
   BUTTONS={}
   INV_BUTTONS={}
   CRAFT_BUTTONS={}
@@ -1035,6 +1117,8 @@ function TICGame()
   draw_inventory(Inventory)
   draw_craft_table(Craftstable)
   update_buttons(BUTTONS)
+  draw_log()
+  update_log()
   draw_hand(Hand)
 end
 
@@ -1042,6 +1126,10 @@ function TICEating()
   cls(13)
   draw_room()
   move_cam()
+
+  draw_log()
+  update_log()
+
   handle_eating(Inventory)
   cleanup(Inventory.items)
   draw_inventory_in_room(Inventory)
