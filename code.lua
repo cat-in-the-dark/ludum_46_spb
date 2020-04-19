@@ -484,7 +484,7 @@ function g_leave( btn )
   btn.color = btn.orig_c
 end
 
-function make_button( x, y, w, h, color, on_hover, on_leave, on_press, on_release, on_enter, sp, offx, offy )
+function make_button( x, y, w, h, color, on_hover, on_leave, on_press, on_release, on_enter, sp, offx, offy, on_draw )
   local btn = deepcopy(Button)
   btn.x, btn.y = x,y
   btn.w, btn.h = w,h
@@ -498,6 +498,7 @@ function make_button( x, y, w, h, color, on_hover, on_leave, on_press, on_releas
   btn.sp = sp
   btn.offx = offx
   btn.offy = offy
+  btn.on_draw = on_draw
   return btn
 end
 
@@ -514,6 +515,7 @@ function check_button( btn, mx, my, md )
     end
   else
     btn.hover = false
+    btn.pressed = false
   end
 
   if btn.hover then
@@ -526,13 +528,39 @@ function check_button( btn, mx, my, md )
     safe1(btn.on_enter, btn)
   end
   if old_pressed and not btn.pressed then
-    safe1(btn.on_press, btn)
-  elseif btn.pressed and not old_pressed then
     safe1(btn.on_release, btn)
+  elseif btn.pressed and not old_pressed then
+    safe1(btn.on_press, btn)
   end
 end
 
+function draw_text_btn( btn,text )
+  rect(btn.x, btn.y, btn.w, btn.h, btn.color)
+  rectb(btn.x, btn.y, btn.w, btn.h, 2)
+  local dx,dy=0,0
+  if btn.pressed then
+    rectb(btn.x + 1, btn.y + 1, btn.w - 1, btn.h - 1, 2)
+    dx,dy=1,1
+  else
+    rectb(btn.x, btn.y, btn.w - 1, btn.h - 1, 2)
+  end
+  local tw,th = print(text, W,H),8
+  printframe(text, btn.x + btn.w/2 - tw/2 + dx, btn.y + btn.h/2 - th/2 + dy, 6)
+end
+
+function draw_craft_btn( btn )
+  draw_text_btn(btn,"Craft!")
+end
+
+function draw_eat_btn( btn )
+  draw_text_btn(btn,"I'm ready!")
+end
+
 function draw_button( btn )
+  if btn.on_draw ~= nil then
+    btn.on_draw(btn)
+    return
+  end
   rect(btn.x, btn.y, btn.w, btn.h, btn.color)
   rectb(btn.x, btn.y, btn.w, btn.h, 2)
   rectb(btn.x + 1, btn.y + 1, btn.w - 1, btn.h - 1, 2)
@@ -636,7 +664,7 @@ function make_recepie( inv )
   for i,it in ipairs(inv.items) do
     table.insert(names, it.name)
     if string.len(namestr) == 0 then namestr = it.name
-    else namestr = sf("%s; %s ", namestr, it.name) end
+    else namestr = sf("%s, %s ", namestr, it.name) end
     if min_item_count == -1 or min_item_count > it.count then min_item_count = it.count end
   end
 
@@ -668,7 +696,7 @@ function make_recepie( inv )
       return false
     end
   else
-    add_log(sf("Unable to craft from: %s", namestr))
+    add_log(sf("No recepie with %s!", namestr))
     return false
   end
 
@@ -1003,7 +1031,6 @@ function get_item_to_eat( inv )
 end
 
 function on_new_day( inv )
-  update_spoil(inv)
   FULLNESS = FULLNESS - HUNGER_SPEED
   local to_eat = get_item_to_eat(inv)
   local item = inventory_take(inv, to_eat, 1)
@@ -1013,6 +1040,7 @@ function on_new_day( inv )
     trace(sf("Unable to eat %s!", to_eat.name))
     exit()
   end
+  update_spoil(inv)
 end
 
 function handle_eating( inv )
@@ -1053,10 +1081,10 @@ function init_buttons()
     table.insert(CRAFT_BUTTONS, btn)
   end
 
-  local do_craft = make_button(141, 42, 41, 20, c, g_hover, g_leave, g_press, on_craft_click, nil)
+  local do_craft = make_button(141, 42, 41, 20, c, g_hover, g_leave, g_press, on_craft_click, nil, nil, 0, 0, draw_craft_btn)
   table.insert(BUTTONS, do_craft)
 
-  local do_eat = make_button(141, 106, 40, 20, c, g_hover, g_leave, g_press, on_eat_click, nil)
+  local do_eat = make_button(176, 112, 60, 20, c, g_hover, g_leave, g_press, on_eat_click, nil, nil, 0, 0, draw_eat_btn)
   table.insert(BUTTONS, do_eat)
 end
 
