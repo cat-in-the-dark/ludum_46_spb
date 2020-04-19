@@ -326,49 +326,49 @@ Items={
   {
     name=Names.bt,
     nutr=6,
-    sp=make_tex(14, 2, 2),
+    sp=make_tex(12, 2, 2),
     spoil=10
   },
   {
     name=Names.flw,
     nutr=3,
-    sp=make_tex(32, 2, 2),
+    sp=make_tex(14, 2, 2),
     spoil=20
   },
   {
     name=Names.brd,
     nutr=15,
-    sp=make_tex(34, 2, 2),
+    sp=make_tex(32, 2, 2),
     spoil=15
   },
   {
     name=Names.ink,
     nutr=0,
-    sp=make_tex(36, 2, 2),
+    sp=make_tex(34, 2, 2),
     spoil=-1
   },
   {
     name=Names.pap,
     nutr=0,
-    sp=make_tex(38, 2, 2),
+    sp=make_tex(36, 2, 2),
     spoil=-1
   },
   {
     name=Names.scrl,
     nutr=0,
-    sp=make_tex(40, 2, 2),
+    sp=make_tex(38, 2, 2),
     spoil=-1
   },
   {
     name=Names.ndls,
     nutr=10,
-    sp=make_tex(42, 2, 2),
+    sp=make_tex(40, 2, 2),
     spoil=50
   },
   {
     name=Names.dftp,
     nutr=15,
-    sp=make_tex(44, 2, 2),
+    sp=make_tex(42, 2, 2),
     spoil=-1
   }
 }
@@ -1167,14 +1167,14 @@ function init_buttons()
     end
   end
 
-  startx,starty = 120, 0
+  startx,starty = 150, 21
   for i=1,2 do
     local btn = make_button(startx + (w + 1) * i, starty + (h + 1), w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil, nil, 2, 2)
     table.insert(BUTTONS, btn)
     table.insert(CRAFT_BUTTONS, btn)
   end
   if Craftstable.size > 2 then
-    startx,starty = 120, -20
+    startx,starty = 150, 0
     for i=1,2 do
       local btn = make_button(startx + (w + 1) * i, starty + (h + 1), w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil, nil, 2, 2)
       table.insert(BUTTONS, btn)
@@ -1182,7 +1182,7 @@ function init_buttons()
     end
   end
 
-  local do_craft = make_button(141, 42, 41, 20, c, g_hover, g_leave, g_press, on_craft_click, nil, nil, 0, 0, draw_craft_btn)
+  local do_craft = make_button(171, 63, 41, 20, c, g_hover, g_leave, g_press, on_craft_click, nil, nil, 0, 0, draw_craft_btn)
   table.insert(BUTTONS, do_craft)
 
   local do_eat = make_button(176, 112, 60, 20, c, g_hover, g_leave, g_press, on_eat_click, nil, nil, 0, 0, draw_eat_btn)
