@@ -1147,7 +1147,6 @@ function init_inv( inv )
   inventory_add(inv, Names.w, 90)
   inventory_add(inv, Names.tp, 10)
   inventory_add(inv, Names.mlk, 10)
-  inventory_add(inv, Names.scrl, 1)
 end
 
 function init_buttons()
