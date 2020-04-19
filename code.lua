@@ -808,12 +808,24 @@ function draw_person(cx,cy)
 end
 
 FH=20
-FW=24
+FW=18
+TW=24
 
 LX = -W3D / 2 - 10
 TY = H3D / 2 + 10
 RX = W3D / 2 + 10
 BY = -H3D / 2 - 10
+
+function draw_table()
+  local l1,l2,l3,l4 = v3(LX+2, BY, 2), v3(LX+2,BY,2.5), v3(LX+TW,BY,2.5), v3(LX+TW,BY,2)
+  local dy = v3(0,FH,0)
+  local t1,t2,t3,t4 = v3add(l1,dy), v3add(l2,dy), v3add(l3,dy), v3add(l4,dy)
+  line_3dv(l1, t1, 2)
+  line_3dv(l2, t2, 2)
+  line_3dv(l3, t3, 2)
+  line_3dv(l4, t4, 2)
+  line_3dvv({t1, t2, t3, t4, t1}, 2)
+end
 
 function draw_room()
   -- walls
@@ -828,14 +840,7 @@ function draw_room()
   rect_3d(tlx, tly, 3, trx-tlx, tly-bly)
 
   -- table
-  local l1,l2,l3,l4 = v3(blx+2, bly, 2), v3(blx+2,bly,2.5), v3(blx+FW,bly,2.5), v3(blx+FW,bly,2)
-  local dy = v3(0,20,0)
-  local t1,t2,t3,t4 = v3add(l1,dy), v3add(l2,dy), v3add(l3,dy), v3add(l4,dy)
-  line_3dv(l1, t1, 2)
-  line_3dv(l2, t2, 2)
-  line_3dv(l3, t3, 2)
-  line_3dv(l4, t4, 2)
-  line_3dvv({t1, t2, t3, t4, t1}, 2)
+  draw_table()
 
   -- fridge
   local b1,b2,b3,b4 = v3(brx,bry,3), v3(brx-20,bry,3), v3(brx-20,bry,2.7),v3(brx,bry,2.7)
@@ -850,7 +855,7 @@ function draw_room()
   line_3dv(h1,h2,2)
 
   -- furniture 1
-  b1,b2,b3,b4 = v3(RX,BY,1), v3(RX,BY,2.7), v3(brx-18,bry,2.7),v3(brx-18,bry,1)
+  b1,b2,b3,b4 = v3(RX,BY,1), v3(RX,BY,2.7), v3(brx-FW,bry,2.7),v3(brx-FW,bry,1)
   dy=v3(0,FH,0)
   t1,t2,t3,t4 = v3add(b1,dy), v3add(b2,dy), v3add(b3,dy), v3add(b4,dy)
   line_3dvv({b1,b2,b3,b4,b1},2)
@@ -874,6 +879,13 @@ end
 
 
 INV_ROOM_COORDS = {}
+ITEM_TO_EAT=nil
+
+function draw_item_to_eat( itm )
+  if itm == nil then return end
+  local startx,starty=point_3d(LX+TW/2-5,BY+FH,2.25)
+  draw_entity_up({x=startx,y=starty,sp=itm.sp})
+end
 
 function draw_inventory_in_room( inv )
   for i,it in ipairs(INV_ROOM_COORDS) do
@@ -881,13 +893,14 @@ function draw_inventory_in_room( inv )
     if inv_item ~= nil then
       local startx,starty = point_3d(it.v.x, it.v.y, it.v.z)
       draw_entity_up({x=startx, y=starty, sp=it.it.sp})
+      local tw = print(it.it.count, W, H, 0, false, 1, true)
+      local dx,dy=16,6
+      printframe(it.it.count,startx+dx-tw,starty-dy,nil,nil,true)
     end
   end
 end
 
-function on_new_day( inv )
-  update_spoil(inv)
-  FULLNESS = FULLNESS - HUNGER_SPEED
+function get_item_to_eat( inv )
   local to_eat = -1
   local min_spoil = -1
   local max_nutr = -1
@@ -905,11 +918,18 @@ function on_new_day( inv )
       end
     end
   end
-  local item = inventory_take(inv, inv.items[to_eat], 1)
+  return inv.items[to_eat]
+end
+
+function on_new_day( inv )
+  update_spoil(inv)
+  FULLNESS = FULLNESS - HUNGER_SPEED
+  local to_eat = get_item_to_eat(inv)
+  local item = inventory_take(inv, to_eat, 1)
   if item ~= nil then
     FULLNESS = FULLNESS + item.nutr
   else
-    trace(sf("Unable to eat %s!", inv.items[to_eat].name))
+    trace(sf("Unable to eat %s!", to_eat.name))
     exit()
   end
 end
@@ -966,7 +986,7 @@ end
 function init_inventory_room_coords( inv )
   INV_ROOM_COORDS={}
 
-  local xmin,xmax = RX-FW+5, RX-5
+  local xmin,xmax = RX-FW+1, RX-5
   local y = BY+FH
   local zmin,zmax = 1.2, 2.5
 
@@ -993,6 +1013,7 @@ function INITEating()
   TICK=0
   FULLNESS=100
   HUNGER_SPEED=10
+  ITEM_TO_EAT=nil
 
   init_inventory_room_coords(Inventory)
 end
@@ -1024,6 +1045,8 @@ function TICEating()
   handle_eating(Inventory)
   cleanup(Inventory.items)
   draw_inventory_in_room(Inventory)
+  ITEM_TO_EAT = get_item_to_eat(Inventory)
+  draw_item_to_eat(ITEM_TO_EAT)
   print(sf("Days: %d, Fullness: %d", DAYS, FULLNESS))
   if FULLNESS <= 0 then
     state=GAMEOVER
