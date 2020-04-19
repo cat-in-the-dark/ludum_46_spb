@@ -414,7 +414,9 @@ ALL_INVENTORIES={
 }
 
 function enhance_craftstable()
+  if Craftstable.size == 4 then return end
   Craftstable.size = 4
+  add_log("The wisdom of the scroll allows you to craft more complicated recepies!")
   init_buttons()
 end
 
@@ -456,7 +458,7 @@ Recepies={
     res=Names.scrl
   },
   {
-    items={Names.tp, Names.bt},
+    items={Names.tp, Names.bt, Names.flw},
     res=Names.dftp
   },
   {
