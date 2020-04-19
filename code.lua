@@ -762,9 +762,15 @@ end
 
 pangle=0
 delta = math.pi / 10
-pspeed = 0.003
-min_angle,max_angle=pangle-delta,pangle+pspeed
+pdangle=0
+pspeed = 0.05
+min_angle,max_angle=pangle-delta,pangle-0.1
 dir=1
+
+function map_to( oldmin,oldmax,newmin,newmax,val )
+  local norm = (val-oldmin) / (oldmax-oldmin)
+  return norm * (newmax-newmin) + newmin
+end
 
 function draw_person(cx,cy)
   b1 = v3(cx, cy,2.2)
@@ -780,13 +786,13 @@ function draw_person(cx,cy)
   local r=4
   dy=v3(0,r,0)
   local h = v3add(dy,t1)
-  b2=v3add(t1,v3(6,-2,0))
-  b3=v3add(t1,v3(4,-2,-0.2))
-  t2=v3add(t1,v3(2,2,0))
-  t3=v3add(t1,v3(0,2,-0.1))
+  b2=v3add(t1,v3(6,0,0))
+  b3=v3add(t1,v3(4,0,-0.2))
+  t2=v3add(t1,v3(2,5,0))
+  t3=v3add(t1,v3(0,5,-0.1))
 
-  pangle = pangle + dir*pspeed
-  if pangle <= min_angle or pangle >= max_angle then dir = -dir end
+  pangle = map_to(-1,1,min_angle,max_angle,math.sin(pdangle))
+  pdangle = pdangle + pspeed
 
   for i,v in ipairs({t1,b2,b3,t2,t3,h}) do
     local dst = v2dist(v,b1)
@@ -967,7 +973,6 @@ function init_inventory_room_coords( inv )
   for i,it in ipairs(inv.items) do
     local rndx = math.random(xmin, xmax)
     local rndz = math.random(math.floor(zmin * 100), math.floor(zmax * 100)) / 100.0
-    trace(sf("%f", rndz))
     table.insert(INV_ROOM_COORDS, {it=it,v=v3(rndx,y,rndz)})
   end
 
