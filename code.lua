@@ -169,7 +169,7 @@ LOGSTR_LIFETIME=180
 CUR_HEIGHT=0
 
 function add_log( str )
-  local tokens = textwrap(str,40)
+  local tokens = textwrap(str,42)
   for i,t in ipairs(tokens) do
     table.insert(LOG,{str=t,t=0})
   end
