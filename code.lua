@@ -716,19 +716,6 @@ function make_recepie( inv )
   return true
 end
 
-function eat( inv )
-  if #inv.items <= 0 then return false end
-
-  local item = inv.items[1]
-  it = inventory_take(inv, item, 1)
-  if it == nil then
-    trace(sf("no item %s in inventory!", item.name))
-    return false
-  end
-  HEALTH = HEALTH + it.nutr
-  return true
-end
-
 function update_spoil( inv )
   for i,it in ipairs(inv.items) do
     if it.spoil ~= -1 then
@@ -1123,6 +1110,10 @@ function on_new_day( inv )
     trace(sf("Unable to eat %s!", to_eat.name))
     exit()
   end
+  local test = inventory_get(inv, item)
+  if test == nil or test.count <= 0 then
+    add_log(sf("We're out of %s!", item.name))
+  end
   update_spoil(inv)
 end
 
@@ -1319,7 +1310,12 @@ function TICEating()
   cleanup(Inventory.items)
   draw_inventory_in_room(Inventory)
   draw_item_to_eat(get_item_to_eat(Inventory))
-  print(sf("Days: %d, Fullness: %d", DAYS, FULLNESS))
+  local status = "full"
+  if FULLNESS < 33 then status = "starving"
+  elseif FULLNESS < 67 then status = "hungry" end
+  local date = sf("%d days", DAYS)
+  if DAYS == 1 then date = "1 day" end
+  printframe(sf("Lockdown: %s, i'm %s", date, status), 10, 10)
 
   draw_log()
   update_log()
