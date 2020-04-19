@@ -605,6 +605,7 @@ function on_inventory_hover( btn )
     elseif it.spoil == 1 then exp_str = "1 day" end
     local text = sf("%s\nNutrition: %d\nExpires in: %s", it.name, it.nutr, exp_str)
     local width = print(text, W, H)
+    rect(math.min(W-width-2, mx + dx-2), my + dy-2, width+5, 22, 8)
     printframe(text, math.min(W-width, mx + dx), my + dy)
   end
 end
@@ -825,6 +826,51 @@ function draw_room()
   draw_person(0, bly)
 end
 
+
+DAYS=0
+FPD=60
+TICK=0
+FULLNESS=100
+HUNGER_SPEED=10
+
+function on_new_day( inv )
+  FULLNESS = FULLNESS - HUNGER_SPEED
+  local to_eat = -1
+  local min_spoil = -1
+  local max_nutr = -1
+  for i,it in ipairs(inv.items) do
+    -- take product that expires sooner
+    if min_spoil > it.spoil then
+      min_spoil = it.spoil
+      to_eat = i
+      max_nutr = it.nutr
+    -- if multiple found expire same day, take more nutricious
+    elseif min_spoil == -1 or min_spoil == it.spoil then
+      if max_nutr < it.nutr then
+        to_eat = i
+        max_nutr = it.nutr
+      end
+    end
+  end
+  trace(sf("Take %s to eat", inv.items[to_eat].name))
+  local item = inventory_take(inv, inv.items[to_eat], 1)
+  if item ~= nil then
+    FULLNESS = FULLNESS + item.nutr
+  else
+    trace(sf("Unable to eat %s!", inv.items[to_eat].name))
+    exit()
+  end
+end
+
+function handle_eating( inv )
+  TICK = TICK + 1
+  if TICK == FPD then
+    TICK=0
+    DAYS=DAYS + 1
+    on_new_day(inv)
+  end
+end
+
 -- init
 
 function init_inv( inv )
@@ -892,15 +938,19 @@ function TICEating()
   -- TODO: eat collected resources
   draw_room()
   move_cam()
+  handle_eating(Inventory)
   cleanup(Inventory.items)
   draw_inventory(Inventory)
   draw_buttons(INV_BUTTONS)
-  print("Eating...")
+  print(sf("Days: %d, Fullness: %d", DAYS, FULLNESS))
+  if FULLNESS <= 0 then
+    state=GAMEOVER
+  end
 end
 
 function TICGameover()
   cls(1)
-  print("GAME OVER!")
+  print(sf("You've managed to survive for %d days", DAYS), 5, 5)
 end
 
 GAME=1
