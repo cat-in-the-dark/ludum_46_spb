@@ -25,6 +25,12 @@ function safe1( f, arg )
   if f ~= nil then f(arg) end
 end
 
+function plural( i,one,pl )
+  local res = sf("%d %s", i, pl)
+  if i == 1 then res = sf("1 %s",one) end
+  return res
+end
+
 function deepcopy(orig)
   local orig_type = type(orig)
   local copy
@@ -863,20 +869,14 @@ function move_cam()
   cam.z = 0.2+math.sin(angle1) * AMP_Z
 end
 
-pangle=0
-delta = math.pi / 10
-pdangle=0
-pspeed = 0.05
-min_angle,max_angle=pangle-delta,pangle-0.1
-dir=1
-
 function map_to( oldmin,oldmax,newmin,newmax,val )
   local norm = (val-oldmin) / (oldmax-oldmin)
   return norm * (newmax-newmin) + newmin
 end
 
-function draw_person(b1,fdup)
+function draw_person(b1,fdup,anim)
   fdup=fdup or 0
+  anim=anim or false
   t2=v3add(b1,v3(10,10,0))
   t3=v3add(b1,v3(8,10,-0.2))
   b2=v3add(b1,v3(12,0,0))
@@ -1214,8 +1214,17 @@ function restore_madness()
   H3D=45
 end
 
+function restore_person()
+  pangle=0
+  delta = math.pi / 10
+  pdangle=0
+  pspeed = 0.05
+  min_angle,max_angle=pangle-delta,pangle-0.1
+end
+
 function INITIntro()
   restore_madness()
+  restore_person()
   intro_was_click=false
   cam.x=7
   cam.y=-21
@@ -1225,9 +1234,13 @@ end
 
 function INITGame()
   restore_madness()
-
+  restore_person()
   init_inv(Inventory)
   init_buttons()
+end
+
+function INITGameover()
+  RESY=H
 end
 
 function TICIntro()
@@ -1313,8 +1326,7 @@ function TICEating()
   local status = "full"
   if FULLNESS < 33 then status = "starving"
   elseif FULLNESS < 67 then status = "hungry" end
-  local date = sf("%d days", DAYS)
-  if DAYS == 1 then date = "1 day" end
+  local date = plural(DAYS,"day","days")
   printframe(sf("Lockdown: %s, i'm %s", date, status), 10, 10)
 
   draw_log()
@@ -1322,8 +1334,32 @@ function TICEating()
 end
 
 function TICGameover()
-  cls(1)
-  print(sf("You've managed to survive for %d days", DAYS), 5, 5)
+  cls(13)
+  draw_room(true)
+  -- stop twitching
+  pspeed=0
+
+  if cam.z > -3 then
+    draw_inventory_in_room(Inventory)
+    draw_item_to_eat(get_item_to_eat(Inventory))
+  end
+
+  local text = sf("You've managed to survive for %s", plural(DAYS,"day","days"))
+  local w = print(text,W,H)
+
+  if cam.z < -8 and cam.z > -12 then
+    printframe(text, W / 2 - w / 2, RESY)
+    RESY = RESY - 0.5
+  end
+
+  if cam.z < -12 then
+    printframe(text, W / 2 - w / 2, RESY)
+    local text1 = "Click to retry"
+    local w = print(text1,W,H)
+    printframe(text1, W / 2 - w / 2, RESY + 16)
+  else
+    cam.z = cam.z - 0.05
+  end
   local x,y,d=mouse()
   if d then state=GAME end
 end
@@ -1348,7 +1384,8 @@ UPDATE={
 INIT={
   [GAME]=INITGame,
   [EATING]=INITEating,
-  [INTRO]=INITIntro
+  [INTRO]=INITIntro,
+  [GAMEOVER]=INITGameover
 }
 
 function TIC()
