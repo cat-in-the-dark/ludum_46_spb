@@ -1403,7 +1403,7 @@ end
 function TICEating()
   cls(13)
   handle_madness()
-  draw_room()
+  draw_room(true)
   move_cam()
 
   handle_eating(Inventory)
