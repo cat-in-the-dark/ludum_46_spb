@@ -276,7 +276,6 @@ Names={
   w="Water",
   chr="Charcoal powder",
   mlk="Milk",
-  sc="Sour Cream",
   bt="Butter",
   flw="Buckwheat Flower",
   brd="Bread",
@@ -320,110 +319,57 @@ Items={
   },
   {
     name=Names.mlk,
-    nutr=1,
+    nutr=5,
     sp=make_tex(10, 2, 2),
-    spoil=-1
-  },
-  {
-    name=Names.sc,
-    nutr=1,
-    sp=make_tex(12, 2, 2),
-    spoil=-1
+    spoil=5
   },
   {
     name=Names.bt,
-    nutr=1,
+    nutr=6,
     sp=make_tex(14, 2, 2),
-    spoil=-1
+    spoil=10
   },
   {
     name=Names.flw,
-    nutr=1,
+    nutr=3,
     sp=make_tex(32, 2, 2),
-    spoil=-1
+    spoil=20
   },
   {
     name=Names.brd,
-    nutr=1,
+    nutr=15,
     sp=make_tex(34, 2, 2),
-    spoil=-1
+    spoil=15
   },
   {
     name=Names.ink,
-    nutr=1,
+    nutr=0,
     sp=make_tex(36, 2, 2),
     spoil=-1
   },
   {
     name=Names.pap,
-    nutr=1,
+    nutr=0,
     sp=make_tex(38, 2, 2),
     spoil=-1
   },
   {
     name=Names.scrl,
-    nutr=1,
+    nutr=0,
     sp=make_tex(40, 2, 2),
     spoil=-1
   },
   {
     name=Names.ndls,
-    nutr=1,
+    nutr=10,
     sp=make_tex(42, 2, 2),
-    spoil=-1
+    spoil=50
   },
   {
     name=Names.dftp,
-    nutr=1,
+    nutr=15,
     sp=make_tex(44, 2, 2),
     spoil=-1
-  }
-}
-
-Recepies={
-  {
-    items={Names.bw, Names.w},
-    res=Names.bwp
-  },
-  {
-    items={Names.tp},
-    res=Names.chr
-  },
-  {
-    items={Names.mlk},
-    res=Names.sc
-  },
-  {
-    items={Names.sc},
-    res=Names.bt
-  },
-  {
-    items={Names.bw},
-    res=Names.flw
-  },
-  {
-    items={Names.tp, Names.w},
-    res=Names.pap
-  },
-  {
-    items={Names.flw, Names.mlk},
-    res=Names.brd
-  },
-  {
-    items={Names.flw, Names.w},
-    res=Names.ndls
-  },
-  {
-    items={Names.chr, Names.w},
-    res=Names.ink
-  },
-  {
-    items={Names.ink, Names.pap},
-    res=Names.scrl
-  },
-  {
-    items={Names.tp, Names.bt},
-    res=Names.dftp
   }
 }
 
@@ -465,6 +411,58 @@ ALL_INVENTORIES={
   Inventory,
   Hand,
   Craftstable
+}
+
+function enhance_craftstable()
+  Craftstable.size = 4
+  init_buttons()
+end
+
+Recepies={
+  {
+    items={Names.bw, Names.w},
+    res=Names.bwp
+  },
+  {
+    items={Names.tp},
+    res=Names.chr
+  },
+  {
+    items={Names.mlk},
+    res=Names.bt
+  },
+  {
+    items={Names.bw},
+    res=Names.flw
+  },
+  {
+    items={Names.tp, Names.w},
+    res=Names.pap
+  },
+  {
+    items={Names.flw, Names.mlk},
+    res=Names.brd
+  },
+  {
+    items={Names.flw, Names.w},
+    res=Names.ndls
+  },
+  {
+    items={Names.chr, Names.w},
+    res=Names.ink
+  },
+  {
+    items={Names.ink, Names.pap},
+    res=Names.scrl
+  },
+  {
+    items={Names.tp, Names.bt},
+    res=Names.dftp
+  },
+  {
+    items={Names.scrl},
+    res={magic=enhance_craftstable}
+  }
 }
 
 HEALTH=100
@@ -695,7 +693,10 @@ function make_recepie( inv )
     cleanup(inv.items)
 
     -- add new item
-    if not inventory_add(inv, res, res_count) then
+    if res.magic ~= nil then
+      res.magic()
+      return true
+    elseif not inventory_add(inv, res, res_count) then
       trace(sf("Unable to add %s to inventory", res))
       return false
     end
@@ -1145,10 +1146,15 @@ function init_inv( inv )
   inventory_add(inv, Names.bw, 10)
   inventory_add(inv, Names.w, 90)
   inventory_add(inv, Names.tp, 10)
-  inventory_add(inv, Names.mlk, 5)
+  inventory_add(inv, Names.mlk, 10)
+  inventory_add(inv, Names.scrl, 1)
 end
 
 function init_buttons()
+  BUTTONS={}
+  INV_BUTTONS={}
+  CRAFT_BUTTONS={}
+
   local startx,starty = 0, 0
   local w,h = 20, 20
   local c = 10
@@ -1165,6 +1171,14 @@ function init_buttons()
     local btn = make_button(startx + (w + 1) * i, starty + (h + 1), w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil, nil, 2, 2)
     table.insert(BUTTONS, btn)
     table.insert(CRAFT_BUTTONS, btn)
+  end
+  if Craftstable.size > 2 then
+    startx,starty = 120, -20
+    for i=1,2 do
+      local btn = make_button(startx + (w + 1) * i, starty + (h + 1), w, h, c, on_inventory_hover, g_leave, g_press, on_inventory_click, nil, nil, 2, 2)
+      table.insert(BUTTONS, btn)
+      table.insert(CRAFT_BUTTONS, btn)
+    end
   end
 
   local do_craft = make_button(141, 42, 41, 20, c, g_hover, g_leave, g_press, on_craft_click, nil, nil, 0, 0, draw_craft_btn)
@@ -1220,9 +1234,6 @@ end
 function INITGame()
   restore_madness()
 
-  BUTTONS={}
-  INV_BUTTONS={}
-  CRAFT_BUTTONS={}
   init_inv(Inventory)
   init_buttons()
 end
