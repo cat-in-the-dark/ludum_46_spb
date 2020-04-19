@@ -925,26 +925,18 @@ end
 FH=20
 FW=18
 TW=24
+TD=0.5
 
 LX = -W3D / 2 - 10
 TY = H3D / 2 + 10
 RX = W3D / 2 + 10
 BY = -H3D / 2 - 10
 
-TO_EAT_COORDS={
-  v3(LX+TW/2-5,BY+FH,2.25),
-  v3(0,BY,2.2)
-}
-
-PERSCOORDS={
-  v3(0,BY,2.2),
-  v3(LX+TW/2-5,BY+FH,2.25)
-}
-
-function draw_table_1()
-  local l1,l2,l3,l4 = v3(LX+2, BY, 2), v3(LX+2,BY,2.5), v3(LX+TW,BY,2.5), v3(LX+TW,BY,2)
+function draw_table(p0, drop)
+  local l1,l2,l3,l4 = p0, v3add(p0, v3(0,0,TD)), v3add(p0, v3(TW,0,TD)), v3add(p0, v3(TW,0,0))
   local dy = v3(0,FH,0)
   local t1,t2,t3,t4 = v3add(l1,dy), v3add(l2,dy), v3add(l3,dy), v3add(l4,dy)
+  if drop then t1,t2,t3,t4,l1,l2,l3,l4=l1,l2,l3,l4,t1,t2,t3,t4 end
   line_3dv(l1, t1, 2)
   line_3dv(l2, t2, 2)
   line_3dv(l3, t3, 2)
@@ -995,7 +987,7 @@ function draw_room()
   h1,h2 = v3add(t3,dy),v3add(t4,dy)
   line_3dv(h1,h2,c)
 
-  draw_table_1()
+  draw_table(TBL_POS,TABLE_DROP)
   draw_person(PERSCOORD, PERSFDUP)
 end
 
@@ -1022,27 +1014,51 @@ end
 
 -- madness
 
-AMP_INC_SPEED=0.1
+AMP_INC_SPEED=0.05
+AMP_Z_INC_SPEED=0.01
+
+TBL_COORDS={
+  v3(LX+2,BY,2),
+  v3(-TW/2,BY,2)
+}
+
+TO_EAT_COORDS={
+  v3(LX+TW/2-5,BY+FH,2.25),
+  v3(0,BY,2.2)
+}
+
+PERSCOORDS={
+  v3(0,BY,2.2),
+  v3(LX+TW/2-5,BY+FH,2.25),
+  v3(LX+TW/2-5,BY,2.25)
+}
 
 function handle_madness()
-  if DAYS >= 10 and DAYS < 20 then
+  -- objects position
+  if DAYS < 10 then 
+    TO_EAT_POS=TO_EAT_COORDS[1]
+    PERSCOORD=PERSCOORDS[1]
+  elseif DAYS < 20 then
     TO_EAT_POS=TO_EAT_COORDS[2]
     PERSCOORD=PERSCOORDS[2]
   else
-    TO_EAT_POS=TO_EAT_COORDS[1]
-    PERSCOORD=PERSCOORDS[1]
+    PERSCOORD=PERSCOORDS[3]
+    TBL_POS=TBL_COORDS[2]
+    TABLE_DROP=true
   end
 
+  -- camera amplitude
   local max_amp_xy = 0
+  local max_amp_z = 0
   if DAYS < 4 then
     max_amp_xy=0
-    AMP_Z=0.2
+    max_amp_z=0.2
   elseif DAYS < 8 then
     max_amp_xy=10
-    AMP_Z=0.3
+    max_amp_z=0.3
   elseif DAYS < 16 then
     max_amp_xy=15
-    AMP_Z=0.5
+    max_amp_z=0.5
   elseif DAYS < 32 then
     max_amp_xy=20
   elseif DAYS < 64 then
@@ -1050,14 +1066,15 @@ function handle_madness()
   end
 
   if AMP_XY < max_amp_xy then AMP_XY = AMP_XY + AMP_INC_SPEED end
+  if AMP_Z < max_amp_z then AMP_Z = AMP_Z + AMP_Z_INC_SPEED end
 
-  if DAYS < 25 then
-    PERSFDUP=0
-  elseif DAYS < 30 then
-    PERSFDUP=1
-  else
-    PERSFDUP=2
-  end
+  -- if DAYS < 25 then
+  --   PERSFDUP=0
+  -- elseif DAYS < 30 then
+  --   PERSFDUP=1
+  -- else
+  --   PERSFDUP=2
+  -- end
 end
 
 function get_item_to_eat( inv )
@@ -1165,8 +1182,10 @@ end
 function INITGame()
   -- restore madness 
   cam={x=0,y=0,z=0}
+  TBL_POS=TBL_COORDS[1]
   TO_EAT_POS=TO_EAT_COORDS[1]
   PERSCOORD=PERSCOORDS[1]
+  TABLE_DROP=false
   AMP_XY=0
   AMP_Z=0.1
   PERSFDUP=0
