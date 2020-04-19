@@ -856,19 +856,17 @@ function draw_hand( inv )
   end
 end
 
-radius=10
 angle=0
 angle1=0
-radius1=0.3
 a_speed=0.015
 w_speed=0.01
 
 function move_cam()
   angle = angle + a_speed
   angle1=angle1 + w_speed
-  cam.x = math.cos(angle) * radius
-  cam.y = math.sin(angle) * radius
-  cam.z = 0.2+math.sin(angle1) * radius1
+  cam.x = math.cos(angle) * AMP_XY
+  cam.y = math.sin(angle) * AMP_XY
+  cam.z = 0.2+math.sin(angle1) * AMP_Z
 end
 
 pangle=0
@@ -883,8 +881,8 @@ function map_to( oldmin,oldmax,newmin,newmax,val )
   return norm * (newmax-newmin) + newmin
 end
 
-function draw_person(cx,cy)
-  b1 = v3(cx, cy,2.2)
+function draw_person(b1,fdup)
+  fdup=fdup or 0
   t2=v3add(b1,v3(10,10,0))
   t3=v3add(b1,v3(8,10,-0.2))
   b2=v3add(b1,v3(12,0,0))
@@ -893,7 +891,7 @@ function draw_person(cx,cy)
   line_3dvv({b1,t3,b3},2)
 
   -- top part
-  t1=v3(cx,cy+18,2.2)
+  t1=v3add(b1,v3(0,18,0))
   local r=4
   dy=v3(0,r,0)
   local h = v3add(dy,t1)
@@ -905,10 +903,16 @@ function draw_person(cx,cy)
   pangle = map_to(-1,1,min_angle,max_angle,math.sin(pdangle))
   pdangle = pdangle + pspeed
 
-  for i,v in ipairs({t1,b2,b3,t2,t3,h}) do
+  local to_tilt = {t1,b2,b3,t2,t3,h}
+  if fdup > 0 then to_tilt = {b2,b3,t2,t3,h} end
+
+  for i,v in ipairs(to_tilt) do
     local dst = v2dist(v,b1)
     local dangle = math.atan(v.y-b1.y,v.x-b1.x)
-    local temp = v3add(b1, v3(dst*math.cos(dangle+pangle),dst*math.sin(dangle+pangle), 0))
+    local center = b1
+    local ms,mc = math.sin,math.cos
+    if fdup > 1 then center = t1 end
+    local temp = v3add(center, v3(dst*mc(dangle+pangle),dst*ms(dangle+pangle), 0))
     v.x,v.y=temp.x,temp.y
   end
 
@@ -927,7 +931,17 @@ TY = H3D / 2 + 10
 RX = W3D / 2 + 10
 BY = -H3D / 2 - 10
 
-function draw_table()
+TO_EAT_COORDS={
+  v3(LX+TW/2-5,BY+FH,2.25),
+  v3(0,BY,2.2)
+}
+
+PERSCOORDS={
+  v3(0,BY,2.2),
+  v3(LX+TW/2-5,BY+FH,2.25)
+}
+
+function draw_table_1()
   local l1,l2,l3,l4 = v3(LX+2, BY, 2), v3(LX+2,BY,2.5), v3(LX+TW,BY,2.5), v3(LX+TW,BY,2)
   local dy = v3(0,FH,0)
   local t1,t2,t3,t4 = v3add(l1,dy), v3add(l2,dy), v3add(l3,dy), v3add(l4,dy)
@@ -949,9 +963,6 @@ function draw_room()
   line_3d(blx, bly, 1, blx, bly, 3, 2)
   line_3d(brx, bry, 1, brx, bry, 3, 2)
   rect_3d(tlx, tly, 3, trx-tlx, tly-bly)
-
-  -- table
-  draw_table()
 
   -- fridge
   local b1,b2,b3,b4 = v3(brx,bry,3), v3(brx-20,bry,3), v3(brx-20,bry,2.7),v3(brx,bry,2.7)
@@ -984,17 +995,15 @@ function draw_room()
   h1,h2 = v3add(t3,dy),v3add(t4,dy)
   line_3dv(h1,h2,c)
 
-  -- person
-  draw_person(0, bly)
+  draw_table_1()
+  draw_person(PERSCOORD, PERSFDUP)
 end
 
-
 INV_ROOM_COORDS = {}
-ITEM_TO_EAT=nil
 
-function draw_item_to_eat( itm )
+function draw_item_to_eat( itm,x,y,z )
   if itm == nil then return end
-  local startx,starty=point_3d(LX+TW/2-5,BY+FH,2.25)
+  local startx,starty=point_3d(TO_EAT_POS.x,TO_EAT_POS.y,TO_EAT_POS.z)
   draw_entity_up({x=startx,y=starty,sp=itm.sp})
 end
 
@@ -1008,6 +1017,46 @@ function draw_inventory_in_room( inv )
       local dx,dy=16,6
       printframe(it.it.count,startx+dx-tw,starty-dy,nil,nil,true)
     end
+  end
+end
+
+-- madness
+
+AMP_INC_SPEED=0.1
+
+function handle_madness()
+  if DAYS >= 10 and DAYS < 20 then
+    TO_EAT_POS=TO_EAT_COORDS[2]
+    PERSCOORD=PERSCOORDS[2]
+  else
+    TO_EAT_POS=TO_EAT_COORDS[1]
+    PERSCOORD=PERSCOORDS[1]
+  end
+
+  local max_amp_xy = 0
+  if DAYS < 4 then
+    max_amp_xy=0
+    AMP_Z=0.2
+  elseif DAYS < 8 then
+    max_amp_xy=10
+    AMP_Z=0.3
+  elseif DAYS < 16 then
+    max_amp_xy=15
+    AMP_Z=0.5
+  elseif DAYS < 32 then
+    max_amp_xy=20
+  elseif DAYS < 64 then
+    max_amp_xy=50
+  end
+
+  if AMP_XY < max_amp_xy then AMP_XY = AMP_XY + AMP_INC_SPEED end
+
+  if DAYS < 25 then
+    PERSFDUP=0
+  elseif DAYS < 30 then
+    PERSFDUP=1
+  else
+    PERSFDUP=2
   end
 end
 
@@ -1034,6 +1083,9 @@ end
 
 function on_new_day( inv )
   FULLNESS = FULLNESS - HUNGER_SPEED
+  if FULLNESS <= 0 then
+    state=GAMEOVER
+  end
   local to_eat = get_item_to_eat(inv)
   local item = inventory_take(inv, to_eat, 1)
   if item ~= nil then
@@ -1111,7 +1163,17 @@ function init_inventory_room_coords( inv )
 end
 
 function INITGame()
+  -- restore madness 
   cam={x=0,y=0,z=0}
+  TO_EAT_POS=TO_EAT_COORDS[1]
+  PERSCOORD=PERSCOORDS[1]
+  AMP_XY=0
+  AMP_Z=0.1
+  PERSFDUP=0
+  W3D=80
+  H3D=45
+
+  DAYS=0
   BUTTONS={}
   INV_BUTTONS={}
   CRAFT_BUTTONS={}
@@ -1120,12 +1182,10 @@ function INITGame()
 end
 
 function INITEating()
-  DAYS=0
   FPD=60
   TICK=0
   FULLNESS=100
   HUNGER_SPEED=10
-  ITEM_TO_EAT=nil
 
   init_inventory_room_coords(Inventory)
 end
@@ -1154,21 +1214,18 @@ end
 
 function TICEating()
   cls(13)
+  handle_madness()
   draw_room()
   move_cam()
-
-  draw_log()
-  update_log()
 
   handle_eating(Inventory)
   cleanup(Inventory.items)
   draw_inventory_in_room(Inventory)
-  ITEM_TO_EAT = get_item_to_eat(Inventory)
-  draw_item_to_eat(ITEM_TO_EAT)
+  draw_item_to_eat(get_item_to_eat(Inventory))
   print(sf("Days: %d, Fullness: %d", DAYS, FULLNESS))
-  if FULLNESS <= 0 then
-    state=GAMEOVER
-  end
+
+  draw_log()
+  update_log()
 end
 
 function TICGameover()
