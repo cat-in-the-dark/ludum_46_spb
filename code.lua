@@ -16,7 +16,8 @@ UP=0
 DOWN=1
 LEFT=2
 RIGHT=3
-Z=4
+BTN_Z=4
+BTN_X=5
 
 -- helpers
 
@@ -208,6 +209,7 @@ cam={
 
 function point_3d( x,y,z )
   local dz = z - cam.z
+  if dz <= 0.00001 then return nil,nil end
   local x2d,y2d = (x-cam.x)/dz, (y-cam.y)/dz
   local xnorm, ynorm = (x2d + W3D/2) / W3D, (y2d + H3D/2) / H3D
   local xproj, yproj = xnorm * W, (-ynorm + 1) * H
@@ -215,9 +217,9 @@ function point_3d( x,y,z )
 end
 
 function line_3d( x1,y1,z1,x2,y2,z2,c )
-  if z1 <= 0 or z2 <= 0 then return end
   xn1,yn1 = point_3d(x1,y1,z1)
   xn2,yn2 = point_3d(x2,y2,z2)
+  if xn1 == nil or xn2 == nil then return end
   line(xn1,yn1,xn2,yn2,c)
 end
 
@@ -251,9 +253,11 @@ end
 
 function circb_3dv( v,r,c )
   local cx,cy = point_3d(v.x,v.y,v.z)
+  if cx == nil then return end
   local dx=v3(r,0,0)
   local p = v3add(v,dx)
   local px,py = point_3d(p.x,p.y,p.z)
+  if px == nil then return end
   local r2d = math.abs(px-cx)
   circb(cx,cy,r2d,c)
 end
@@ -944,16 +948,19 @@ function draw_table(p0, drop)
   line_3dvv({t1, t2, t3, t4, t1}, 2)
 end
 
-function draw_room()
+function draw_room(stick)
+  stick = stick or false
   -- walls
   local tlx, tly = LX, TY
   local trx, try = RX, TY
   local blx, bly = LX, BY
   local brx, bry = RX, BY
-  line_3d(tlx, tly, 1, tlx, tly, 3, 2)
-  line_3d(trx, try, 1, trx, try, 3, 2)
-  line_3d(blx, bly, 1, blx, bly, 3, 2)
-  line_3d(brx, bry, 1, brx, bry, 3, 2)
+  local d = 1
+  if stick then d = cam.z+0.001 end
+  line_3d(tlx, tly, d, tlx, tly, 3, 2)
+  line_3d(trx, try, d, trx, try, 3, 2)
+  line_3d(blx, bly, d, blx, bly, 3, 2)
+  line_3d(brx, bry, d, brx, bry, 3, 2)
   rect_3d(tlx, tly, 3, trx-tlx, tly-bly)
 
   -- fridge
@@ -996,6 +1003,7 @@ INV_ROOM_COORDS = {}
 function draw_item_to_eat( itm,x,y,z )
   if itm == nil then return end
   local startx,starty=point_3d(TO_EAT_POS.x,TO_EAT_POS.y,TO_EAT_POS.z)
+  if startx == nil then return end
   draw_entity_up({x=startx,y=starty,sp=itm.sp})
 end
 
@@ -1004,6 +1012,7 @@ function draw_inventory_in_room( inv )
     local inv_item = inventory_get(inv, it.it)
     if inv_item ~= nil then
       local startx,starty = point_3d(it.v.x, it.v.y, it.v.z)
+      if startx == nil then return end
       draw_entity_up({x=startx, y=starty, sp=it.it.sp})
       local tw = print(it.it.count, W, H, 0, false, 1, true)
       local dx,dy=16,6
@@ -1123,6 +1132,12 @@ function handle_eating( inv )
   end
 end
 
+function render_logo()
+  print("LOCKDOWN",3,LOGO_Y,2,false,5,false)
+  LOGO_Y = LOGO_Y - 0.5
+  if LOGO_Y <= 80 then LOGO_Y = 80 end
+end
+
 -- init
 
 function init_inv( inv )
@@ -1179,8 +1194,8 @@ function init_inventory_room_coords( inv )
   table.sort(INV_ROOM_COORDS, compare_z)
 end
 
-function INITGame()
-  -- restore madness 
+function restore_madness()
+  DAYS=0
   cam={x=0,y=0,z=0}
   TBL_POS=TBL_COORDS[1]
   TO_EAT_POS=TO_EAT_COORDS[1]
@@ -1191,13 +1206,69 @@ function INITGame()
   PERSFDUP=0
   W3D=80
   H3D=45
+end
 
-  DAYS=0
+function INITIntro()
+  restore_madness()
+  intro_was_click=false
+  cam.x=7
+  cam.y=-21
+  cam.z=3
+  LOGO_Y=H
+end
+
+function INITGame()
+  restore_madness()
+
   BUTTONS={}
   INV_BUTTONS={}
   CRAFT_BUTTONS={}
   init_inv(Inventory)
   init_buttons()
+end
+
+function TICIntro()
+  cls(13)
+
+  if btn(UP) then cam.y = cam.y - 1 end
+  if btn(DOWN) then cam.y = cam.y + 1 end
+  if btn(LEFT) then cam.x = cam.x - 1 end
+  if btn(RIGHT) then cam.x = cam.x + 1 end
+  if btn(BTN_Z) then cam.z = cam.z - 0.01 end
+  if btn(BTN_X) then cam.z = cam.z + 0.01 end
+
+  draw_room(true)
+
+  cam.z = cam.z - 0.01
+  if cam.z <= 0 then
+    render_logo()
+  end
+
+  if cam.z <= -1.5 then
+    local text = "Click to start"
+    local w = print(text,W,H)
+    print(text, W/2 - w/2, 120, 2)
+  end
+
+  local x,y,d = mouse()
+  if d then
+    if intro_was_click then
+      state=GAME
+    end
+  else
+    intro_was_click = true
+  end
+end
+
+LOGO_TO=0
+function TICLogo()
+  cls()
+  spr(336, 88, 24, -1, 8)
+  print("CAT_IN_THE_DARK", 72, 108, 15)
+  LOGO_TO=LOGO_TO+1
+  local x,y,d = mouse()
+  if d then state=INTRO end
+  if LOGO_TO > 120 then state=INTRO end
 end
 
 function INITEating()
@@ -1214,15 +1285,10 @@ function TICGame()
 
   cls(13)
 
-  if btn(UP) then cam.y = cam.y - 1 end
-  if btn(DOWN) then cam.y = cam.y + 1 end
-  if btn(LEFT) then cam.x = cam.x - 1 end
-  if btn(RIGHT) then cam.x = cam.x + 1 end
-
   cleanup(Inventory.items)
   cleanup(Hand.items)
   cleanup(Craftstable.items)
-  draw_room()
+  draw_room(true)
   draw_inventory(Inventory)
   draw_craft_table(Craftstable)
   update_buttons(BUTTONS)
@@ -1257,19 +1323,24 @@ end
 GAME=1
 GAMEOVER=2
 EATING=3
+LOGO=4
+INTRO=5
 
-state=GAME
+state=LOGO
 old_state=nil
 
 UPDATE={
   [GAME]=TICGame,
   [GAMEOVER]=TICGameover,
-  [EATING]=TICEating
+  [EATING]=TICEating,
+  [LOGO]=TICLogo,
+  [INTRO]=TICIntro
 }
 
 INIT={
   [GAME]=INITGame,
-  [EATING]=INITEating
+  [EATING]=INITEating,
+  [INTRO]=INITIntro
 }
 
 function TIC()
