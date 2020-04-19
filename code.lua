@@ -741,13 +741,15 @@ function on_inventory_hover( btn )
     local dx,dy = 5, 5
     local mx,my = mouse()
     local it = btn.item
-    local exp_str = sf("%d days", it.spoil)
-    if it.spoil == -1 then exp_str = "Never"
-    elseif it.spoil == 1 then exp_str = "1 day" end
-    local text = sf("%s\nNutrition: %d\nExpires in: %s", it.name, it.nutr, exp_str)
+    local exp_str = sf("in %d days", it.spoil)
+    if it.spoil == -1 then exp_str = "never"
+    elseif it.spoil == 1 then exp_str = "in 1 day" end
+    local text = sf("%s\nNutrition: %d\nExpires: %s", it.name, it.nutr, exp_str)
     local width = print(text, W, H)
-    rect(math.min(W-width-2, mx + dx-2), my + dy-2, width+5, 22, 8)
-    printframe(text, math.min(W-width, mx + dx), my + dy)
+    local x,y,w,h=math.min(W-width, mx + dx), my+dy, width+6, 24
+    rect(x-4,y-4,w,h,8)
+    rectb(x-3,y-3,w,h,2)
+    printframe(text, x,y)
   end
 end
 
