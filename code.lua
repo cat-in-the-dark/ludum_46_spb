@@ -102,6 +102,18 @@ function draw_entity( e )
   end
 end
 
+function draw_entity_up( e )
+  if e.sp == nil then return end
+  local offx,offy = e.offx, e.offy
+  if offx == nil then offx = 0 end
+  if offy == nil then offy = 0 end
+  for i,t in ipairs(e.sp) do
+    for j,v in ipairs(t) do
+      spr(v, e.x+(j-1)*T + offx, e.y-(#t-i+1)*T + offy, 0)
+    end
+  end
+end
+
 function printframe(text,x,y,c,fc,small)
   c = c or 15
   fc = fc or 0
@@ -236,51 +248,61 @@ Items={
   {
     name=Names.mlk,
     nutr=1,
+    sp=make_tex(10, 2, 2),
     spoil=-1
   },
   {
     name=Names.sc,
     nutr=1,
+    sp=make_tex(12, 2, 2),
     spoil=-1
   },
   {
     name=Names.bt,
     nutr=1,
+    sp=make_tex(14, 2, 2),
     spoil=-1
   },
   {
     name=Names.flw,
     nutr=1,
+    sp=make_tex(32, 2, 2),
     spoil=-1
   },
   {
     name=Names.brd,
     nutr=1,
+    sp=make_tex(34, 2, 2),
     spoil=-1
   },
   {
     name=Names.ink,
     nutr=1,
+    sp=make_tex(36, 2, 2),
     spoil=-1
   },
   {
     name=Names.pap,
     nutr=1,
+    sp=make_tex(38, 2, 2),
     spoil=-1
   },
   {
     name=Names.scrl,
     nutr=1,
+    sp=make_tex(40, 2, 2),
     spoil=-1
   },
   {
     name=Names.ndls,
     nutr=1,
+    sp=make_tex(42, 2, 2),
     spoil=-1
   },
   {
     name=Names.dftp,
     nutr=1,
+    sp=make_tex(44, 2, 2),
     spoil=-1
   }
 }
@@ -779,12 +801,20 @@ function draw_person(cx,cy)
   line_3dv(b1,t1,2)
 end
 
+FH=20
+FW=24
+
+LX = -W3D / 2 - 10
+TY = H3D / 2 + 10
+RX = W3D / 2 + 10
+BY = -H3D / 2 - 10
+
 function draw_room()
   -- walls
-  local tlx, tly = -W3D / 2 - 10, H3D / 2 + 10
-  local trx, try = W3D / 2 + 10, H3D / 2 + 10
-  local blx, bly = -W3D / 2 - 10, -H3D / 2 - 10
-  local brx, bry = W3D / 2 + 10, -H3D / 2 - 10
+  local tlx, tly = LX, TY
+  local trx, try = RX, TY
+  local blx, bly = LX, BY
+  local brx, bry = RX, BY
   line_3d(tlx, tly, 1, tlx, tly, 3, 2)
   line_3d(trx, try, 1, trx, try, 3, 2)
   line_3d(blx, bly, 1, blx, bly, 3, 2)
@@ -792,7 +822,7 @@ function draw_room()
   rect_3d(tlx, tly, 3, trx-tlx, tly-bly)
 
   -- table
-  local l1,l2,l3,l4 = v3(blx+2, bly, 2), v3(blx+2,bly,2.5), v3(blx+24,bly,2.5), v3(blx+24,bly,2)
+  local l1,l2,l3,l4 = v3(blx+2, bly, 2), v3(blx+2,bly,2.5), v3(blx+FW,bly,2.5), v3(blx+FW,bly,2)
   local dy = v3(0,20,0)
   local t1,t2,t3,t4 = v3add(l1,dy), v3add(l2,dy), v3add(l3,dy), v3add(l4,dy)
   line_3dv(l1, t1, 2)
@@ -814,8 +844,8 @@ function draw_room()
   line_3dv(h1,h2,2)
 
   -- furniture 1
-  b1,b2,b3,b4 = v3(brx,bry,1), v3(brx,bry,2.7), v3(brx-18,bry,2.7),v3(brx-18,bry,1)
-  dy=v3(0,20,0)
+  b1,b2,b3,b4 = v3(RX,BY,1), v3(RX,BY,2.7), v3(brx-18,bry,2.7),v3(brx-18,bry,1)
+  dy=v3(0,FH,0)
   t1,t2,t3,t4 = v3add(b1,dy), v3add(b2,dy), v3add(b3,dy), v3add(b4,dy)
   line_3dvv({b1,b2,b3,b4,b1},2)
   line_3dvv({t1,t2,t3,t4,t1},2)
@@ -834,6 +864,19 @@ function draw_room()
 
   -- person
   draw_person(0, bly)
+end
+
+
+INV_ROOM_COORDS = {}
+
+function draw_inventory_in_room( inv )
+  for i,it in ipairs(INV_ROOM_COORDS) do
+    local inv_item = inventory_get(inv, it.it)
+    if inv_item ~= nil then
+      local startx,starty = point_3d(it.v.x, it.v.y, it.v.z)
+      draw_entity_up({x=startx, y=starty, sp=it.it.sp})
+    end
+  end
 end
 
 function on_new_day( inv )
@@ -910,6 +953,27 @@ function init_buttons()
   table.insert(BUTTONS, do_eat)
 end
 
+function compare_z( it1,it2 )
+  return it2.v.z < it1.v.z
+end
+
+function init_inventory_room_coords( inv )
+  INV_ROOM_COORDS={}
+
+  local xmin,xmax = RX-FW+5, RX-5
+  local y = BY+FH
+  local zmin,zmax = 1.2, 2.5
+
+  for i,it in ipairs(inv.items) do
+    local rndx = math.random(xmin, xmax)
+    local rndz = math.random(math.floor(zmin * 100), math.floor(zmax * 100)) / 100.0
+    trace(sf("%f", rndz))
+    table.insert(INV_ROOM_COORDS, {it=it,v=v3(rndx,y,rndz)})
+  end
+
+  table.sort(INV_ROOM_COORDS, compare_z)
+end
+
 function INITGame()
   BUTTONS={}
   INV_BUTTONS={}
@@ -924,6 +988,8 @@ function INITEating()
   TICK=0
   FULLNESS=100
   HUNGER_SPEED=10
+
+  init_inventory_room_coords(Inventory)
 end
 
 function TICGame()
@@ -948,13 +1014,11 @@ end
 
 function TICEating()
   cls(13)
-  -- TODO: eat collected resources
   draw_room()
   move_cam()
   handle_eating(Inventory)
   cleanup(Inventory.items)
-  draw_inventory(Inventory)
-  draw_buttons(INV_BUTTONS)
+  draw_inventory_in_room(Inventory)
   print(sf("Days: %d, Fullness: %d", DAYS, FULLNESS))
   if FULLNESS <= 0 then
     state=GAMEOVER
