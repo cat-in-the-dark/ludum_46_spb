@@ -826,14 +826,8 @@ function draw_room()
   draw_person(0, bly)
 end
 
-
-DAYS=0
-FPD=60
-TICK=0
-FULLNESS=100
-HUNGER_SPEED=10
-
 function on_new_day( inv )
+  update_spoil(inv)
   FULLNESS = FULLNESS - HUNGER_SPEED
   local to_eat = -1
   local min_spoil = -1
@@ -874,15 +868,12 @@ end
 -- init
 
 function init_inv( inv )
+  inv.items={}
   inventory_add(inv, Names.bw, 10)
   inventory_add(inv, Names.w, 90)
   inventory_add(inv, Names.tp, 10)
   inventory_add(inv, Names.mlk, 5)
 end
-
-BUTTONS={}
-INV_BUTTONS={}
-CRAFT_BUTTONS={}
 
 function init_buttons()
   local startx,starty = 0, 0
@@ -910,8 +901,21 @@ function init_buttons()
   table.insert(BUTTONS, do_eat)
 end
 
-init_inv(Inventory)
-init_buttons()
+function INITGame()
+  BUTTONS={}
+  INV_BUTTONS={}
+  CRAFT_BUTTONS={}
+  init_inv(Inventory)
+  init_buttons()
+end
+
+function INITEating()
+  DAYS=0
+  FPD=60
+  TICK=0
+  FULLNESS=100
+  HUNGER_SPEED=10
+end
 
 function TICGame()
   local x,y,left,right,middle,scrollx,scrolly=mouse()
@@ -951,6 +955,8 @@ end
 function TICGameover()
   cls(1)
   print(sf("You've managed to survive for %d days", DAYS), 5, 5)
+  local x,y,d=mouse()
+  if d then state=GAME end
 end
 
 GAME=1
@@ -958,6 +964,7 @@ GAMEOVER=2
 EATING=3
 
 state=GAME
+old_state=nil
 
 UPDATE={
   [GAME]=TICGame,
@@ -965,6 +972,15 @@ UPDATE={
   [EATING]=TICEating
 }
 
+INIT={
+  [GAME]=INITGame,
+  [EATING]=INITEating
+}
+
 function TIC()
+  if old_state ~= state and INIT[state] ~= nil then
+    INIT[state]()
+    old_state = state
+  end
   UPDATE[state]()
 end
