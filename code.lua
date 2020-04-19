@@ -191,14 +191,15 @@ Names={
   w="Water",
   chr="Charcoal powder",
   mlk="Milk",
-  ch1="Curd Cheese",
-  ch2="Cheese",
+  sc="Sour Cream",
+  bt="Butter",
   flw="Buckwheat Flower",
   brd="Bread",
   ink="Ink",
   pap="Paper",
   scrl="Scroll of Wisdom",
   ndls="Noodles",
+  dftp="Deep Fried Toilet Paper"
 }
 
 Items={
@@ -238,12 +239,12 @@ Items={
     spoil=-1
   },
   {
-    name=Names.ch1,
+    name=Names.sc,
     nutr=1,
     spoil=-1
   },
   {
-    name=Names.ch2,
+    name=Names.bt,
     nutr=1,
     spoil=-1
   },
@@ -276,6 +277,11 @@ Items={
     name=Names.ndls,
     nutr=1,
     spoil=-1
+  },
+  {
+    name=Names.dftp,
+    nutr=1,
+    spoil=-1
   }
 }
 
@@ -290,11 +296,11 @@ Recepies={
   },
   {
     items={Names.mlk},
-    res=Names.ch1
+    res=Names.sc
   },
   {
-    items={Names.ch1},
-    res=Names.ch2
+    items={Names.sc},
+    res=Names.bt
   },
   {
     items={Names.bw},
@@ -319,6 +325,10 @@ Recepies={
   {
     items={Names.ink, Names.pap},
     res=Names.scrl
+  },
+  {
+    items={Names.tp, Names.bt},
+    res=Names.dftp
   }
 }
 
@@ -846,7 +856,6 @@ function on_new_day( inv )
       end
     end
   end
-  trace(sf("Take %s to eat", inv.items[to_eat].name))
   local item = inventory_take(inv, inv.items[to_eat], 1)
   if item ~= nil then
     FULLNESS = FULLNESS + item.nutr
