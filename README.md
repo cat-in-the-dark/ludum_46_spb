@@ -1,6 +1,4 @@
-# ludum_46_spb
-
-## GRECHA
+# Lockdown
 
 Lockdown survival game made on TIC-80
 
